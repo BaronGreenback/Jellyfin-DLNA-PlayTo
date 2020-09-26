@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <RootNamespace>Jellyfin.Plugin.DlnaPlayTo</RootNamespace>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <nullable>enable</nullable>
+    <Authors>Jellyfin Team</Authors>
+    <Product>Jellyfin Team</Product>
+    <PackageId>Jellyfin PlayTo Plugin</PackageId>
+    <Version>1.0.1</Version>
+    <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OutputPath></OutputPath>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <DebugType>pdbonly</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Configuration\configPage.html" />
+    <EmbeddedResource Include="Configuration\configPage.html" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="5.0.3">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="SmartAnalyzers.MultithreadingAnalyzer" Version="1.1.31" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.321">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Jellyfin.Plugin.Ssdp\Jellyfin.Plugin.Ssdp\Jellyfin.Plugin.Ssdp.csproj" />
+		<ProjectReference Include="..\..\jellyfin\Jellyfin.Api\Jellyfin.Api.csproj" />
+		<ProjectReference Include="..\..\jellyfin\Jellyfin.Data\Jellyfin.Data.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Registrator\" />
+	</ItemGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>DEBUG</DefineConstants>
+    <WarningLevel>2</WarningLevel>
+    <DocumentationFile>F:\Code\Jellyfin.Plugin.DlnaPlayTo\Jellyfin.Plugin.DlnaPlayTo\Jellyfin.Plugin.DlnaPlayTo.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="del C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\*.* /q&#xD;&#xA;copy $(OutDir)\$(TargetFileName) C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\&#xD;&#xA;copy F:\Code\Jellyfin.Plugin.SSDP\Jellyfin.Plugin.SSDP\bin\Debug\net5.0\Jellyfin.Plugin.SSDP.dll C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\" />
+  </Target>
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <CodeAnalysisRuleSet>../jellyfin.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+</Project>

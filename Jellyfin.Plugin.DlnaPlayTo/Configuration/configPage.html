@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Dlna PlayTo Settings</title>
+</head>
+<body>
+    <div id="PlayToConfigPage" data-role="page" class="page type-interior pluginConfigurationPage mainAnimatedPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="PlayToConfigForm">
+                    <div class="verticalSection verticalSection-extrabottompadding">
+                        <div class="sectionTitleContainer flex align-items-center">
+                            <h2 class="sectionTitle">DLNA PlayTo Settings:</h2>
+                        </div>
+                        <div class="verticalSection verticalSection-extrabottompadding">
+                            <div class="inputContainer">
+                                <label class="inputeLabel inputLabelUnfocused" for="ClientDiscoveryIntervalSeconds">Initial client discovery interval.</label>
+                                <input is="emby-input" id="ClientDiscoveryIntervalSeconds" name="ClientDiscoveryIntervalSeconds" type="number" min="1" max="65535" />
+                                <div class="fieldDescription">
+                                    The interval, in seconds, between discovery attempts until a device is located.
+                                </div>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputeLabel inputLabelUnfocused" for="ClientNotificationInterval">Client discovery interval.</label>
+                                <input is="emby-input" id="ClientNotificationInterval" name="ClientNotificationInterval" type="number" min="1" max="65535" />
+                                <div class="fieldDescription">
+                                    The interval, in seconds, between discovery attempts after a device has been located.
+                                </div>
+                            </div>
+                            <div class="checkboxContainer checkboxContainer-withDescripton">
+                                <label class="emby-checkbox-label" style="display:block">
+                                    <input id="AutoCreatePlayToProfiles" name="AutoCreatePlayToProfiles" type="checkbox" is="emby-checkbox" class="emby-checkbox" />
+                                    <span class="checkboxLabel">
+                                        Automatically create xml profiles for unknown devices.
+                                    </span>
+                                    <span class="checkboxOutline"><span class="material-icons checkboxIcon checkboxIcon-checked check"></span><span class="material-icons checkboxIcon checkboxIcon-unchecked "></span></span>
+                                </label>
+                                <div class="fieldDescription checkboxFieldDescription">Enable this option if you wish to build your own device profile. Profiles are stored in the /config/dlna/user folder.</div>
+                            </div>
+
+                            <div class="checkboxContainer checkboxContainer-withDescripton">
+                                <label class="emby-checkbox-label" style="display:block">
+                                    <input id="EnablePlayToDebug" name="EnablePlayToDebug" type="checkbox" is="emby-checkbox" class="emby-checkbox" />
+                                    <span class="checkboxLabel">
+                                        Enable PlayTo Device Debug Logging
+                                    </span>
+                                    <span class="checkboxOutline"><span class="material-icons checkboxIcon checkboxIcon-checked check"></span><span class="material-icons checkboxIcon checkboxIcon-unchecked "></span></span>
+                                </label>
+                                <div class="fieldDescription checkboxFieldDescription">
+                                    Log all PlayTo device communications. This options will create extremely large log files very quickly, and should only be used as needed for troubleshooting purposes.
+                                </div>
+                            </div>
+
+                            <div class="checkboxContainer checkboxContainer-withDescripton">
+                                <label class="emby-checkbox-label" style="display:block">
+                                    <input id="EnableSsdpTracing" name="EnableSsdpTracing" type="checkbox" is="emby-checkbox" class="emby-checkbox" />
+                                    <span class="checkboxLabel">Enable SSDP Tracing.</span>
+                                    <span class="checkboxOutline"><span class="material-icons checkboxIcon checkboxIcon-checked check"></span><span class="material-icons checkboxIcon checkboxIcon-unchecked "></span></span>
+                                </label>
+                                <div class="fieldDescription checkboxFieldDescription">Log all SSDP packets. These options will create extremely large log files very quickly, and should only be used as needed for troubleshooting purposes.</div>
+                            </div>
+
+                            <div class="inputContainer">
+                                <label class="inputeLabel inputLabelUnfocused" for="SsdpTracingFilter">SSDP Filter.</label>
+                                <input id="SsdpTracingFilter" name="SsdpTracingFilter" type="text" is="emby-input" />
+                                <div class="fieldDescription" style="display:block">
+                                    Filter the logging to traffic coming from, or going to, the IP address provided.
+                                </div>
+                            </div>
+
+                            <div>
+                                <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                                    <span>Save</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <script type="text/javascript">
+                var TemplateConfig = {
+                    pluginUniqueId: '06955396-4e1e-4984-965c-061342f842e3'
+                };
+
+                document.querySelector("#PlayToConfigPage")
+                    .addEventListener("pageshow", function () {
+                        ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
+                            document.querySelector('#AutoCreatePlayToProfiles').checked = config.AutoCreatePlayToProfiles;
+                            document.querySelector('#ClientDiscoveryIntervalSeconds').value = config.ClientDiscoveryIntervalSeconds;
+                            document.querySelector('#ClientNotificationInterval').value = config.ClientNotificationInterval;                            
+                            document.querySelector('#EnablePlayToDebug').checked = config.EnablePlayToDebug;
+                            document.querySelector('#EnableSsdpTracing').checked = config.EnableSsdpTracing;
+                            document.querySelector('#SsdpTracingFilter').value = config.SsdpTracingFilter;
+                            Dashboard.hideLoadingMsg();
+                        });
+                    });
+
+                document.querySelector('#PlayToConfigForm')
+                    .addEventListener('submit', function (e) {
+                        Dashboard.showLoadingMsg();
+                        ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
+                            config.AutoCreatePlayToProfiles = document.querySelector('#AutoCreatePlayToProfiles').checked;
+                            config.ClientDiscoveryIntervalSeconds = document.querySelector('#ClientDiscoveryIntervalSeconds').value;
+                            config.ClientNotificationInterval = document.querySelector('#ClientNotificationInterval').value; 
+                            config.EnablePlayToDebug = document.querySelector('#EnablePlayToDebug').checked;
+                            config.EnableSsdpTracing = document.querySelector('#EnableSsdpTracing').checked;
+                            config.SsdpTracingFilter = document.querySelector('#SsdpTracingFilter').value;
+                            ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config).then(function (result) {
+                                Dashboard.processPluginConfigurationUpdateResult(result);
+                            });
+                        });
+
+                        e.preventDefault();
+                        return false;
+                    });
+            </script>
+        </div>
+    </div>
+</body>
+</html>
