@@ -213,3 +213,6 @@ dotnet_diagnostic.SA1201.severity = error
 
 # AD0001: Analyzer Failure
 dotnet_diagnostic.AD0001.severity = none
+
+# SA0001: XML comment analysis disabled
+dotnet_diagnostic.SA0001.severity = none

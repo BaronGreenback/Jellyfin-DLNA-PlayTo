@@ -1,7 +1,7 @@
 using System.Linq;
 using System.Xml.Linq;
 
-namespace Jellyfin.Plugin.DlnaPlayTo.Model
+namespace Jellyfin.Plugin.Dlna.PlayTo.Model
 {
     /// <summary>
     /// Defines the <see cref="XElementExtensions" />.

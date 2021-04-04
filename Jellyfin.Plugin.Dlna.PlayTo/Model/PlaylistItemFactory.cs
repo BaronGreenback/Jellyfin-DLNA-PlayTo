@@ -1,10 +1,9 @@
 using System.IO;
 using System.Linq;
 using MediaBrowser.Controller.Entities;
-using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Session;
 
-namespace Jellyfin.Plugin.DlnaPlayTo.Model
+namespace Jellyfin.Plugin.Dlna.PlayTo.Model
 {
     /// <summary>
     /// Defines the <see cref="PlaylistItemFactory" />.
@@ -73,7 +72,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Model
             }
 
             // Check container type
-            var mediaContainer = (Path.GetExtension(mediaPath) ?? string.Empty).TrimStart('.');
+            var mediaContainer = Path.GetExtension(mediaPath).TrimStart('.');
 
             return profile.SupportsContainer(mediaContainer);
         }

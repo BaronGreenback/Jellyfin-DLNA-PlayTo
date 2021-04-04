@@ -1,7 +1,6 @@
 using System;
-using MediaBrowser.Model.Dlna;
 
-namespace Jellyfin.Plugin.DlnaPlayTo.Model
+namespace Jellyfin.Plugin.Dlna.PlayTo.Model
 {
     /// <summary>
     /// Defines the <see cref="PlaylistItem" />.
@@ -13,13 +12,8 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Model
         /// </summary>
         /// <param name="streamInfo">The <see cref="StreamInfo"/>.</param>
         /// <param name="profile">The <see cref="DeviceProfile"/>.</param>
-        public PlaylistItem(StreamInfo? streamInfo, DeviceProfile profile)
+        public PlaylistItem(StreamInfo streamInfo, DeviceProfile profile)
         {
-            if (streamInfo == null)
-            {
-                throw new ArgumentNullException(nameof(streamInfo));
-            }
-
             StreamInfo = streamInfo;
             Profile = profile;
             Didl = string.Empty;

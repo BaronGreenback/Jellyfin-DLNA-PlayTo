@@ -2,13 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Security;
-using System.Web;
 using System.Xml.Linq;
-using Jellyfin.Plugin.Ssdp.Model;
+using Jellyfin.Plugin.Dlna.Model;
 using Microsoft.Extensions.Logging;
 
-namespace Jellyfin.Plugin.DlnaPlayTo.Model
+namespace Jellyfin.Plugin.Dlna.PlayTo.Model
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="TransportCommands"/> class.
@@ -23,12 +21,12 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Model
         /// <summary>
         /// Gets the state variables.
         /// </summary>
-        public List<StateVariable> StateVariables { get; } = new List<StateVariable>();
+        public List<StateVariable> StateVariables { get; } = new();
 
         /// <summary>
         /// Gets the service actions.
         /// </summary>
-        public List<ServiceAction> ServiceActions { get; } = new List<ServiceAction>();
+        public List<ServiceAction> ServiceActions { get; } = new();
 
         /// <summary>
         /// Creates a transport command.

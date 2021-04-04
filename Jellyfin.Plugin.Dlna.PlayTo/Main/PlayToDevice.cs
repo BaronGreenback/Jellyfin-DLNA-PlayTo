@@ -11,22 +11,21 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using System.Xml;
 using System.Xml.Linq;
-using Emby.Dlna.Profiles;
-using Jellyfin.Plugin.DlnaPlayTo.EventArgs;
-using Jellyfin.Plugin.DlnaPlayTo.Model;
-using Jellyfin.Plugin.DlnaPlayTo.Profile;
-using Jellyfin.Plugin.Ssdp.Culture;
-using Jellyfin.Plugin.Ssdp.Didl;
-using Jellyfin.Plugin.Ssdp.EventArgs;
-using Jellyfin.Plugin.Ssdp.Model;
+using Jellyfin.Plugin.Dlna.Culture;
+using Jellyfin.Plugin.Dlna.Didl;
+using Jellyfin.Plugin.Dlna.EventArgs;
+using Jellyfin.Plugin.Dlna.Model;
+using Jellyfin.Plugin.Dlna.PlayTo.EventArgs;
+using Jellyfin.Plugin.Dlna.PlayTo.Model;
+using Jellyfin.Plugin.Dlna.Profiles;
 using MediaBrowser.Common.Net;
-using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Notifications;
 using Microsoft.Extensions.Logging;
 
-namespace Jellyfin.Plugin.DlnaPlayTo.Main
+namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 {
     /// <summary>
     /// Enum of service type indices.
@@ -46,7 +45,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
         /// <summary>
         /// The index of the transport service.
         /// </summary>
-        AVTransport = 2
+        AvTransport = 2
     }
 
     /// <summary>
@@ -283,6 +282,26 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
         public static string FriendlyName { get; set; } = "Jellyfin";
 
         /// <summary>
+        /// Gets the services the device supports.
+        /// </summary>
+        public DeviceService?[] Services { get; } = { null, null, null };
+
+        /// <summary>
+        /// Gets the Render Control service.
+        /// </summary>
+        public DeviceService? RenderControl => Services[(int)ServiceType.RenderControl];
+
+        //// <summary>
+        //// Gets the Connection Manager service.
+        //// </summary>
+        // public DeviceService? ConnectionManager => Services[(int)ServiceType.ConnectionManager];
+
+        /// <summary>
+        /// Gets the AVTransport service.
+        /// </summary>
+        public DeviceService? AvTransport => Services[(int)ServiceType.AvTransport];
+
+        /// <summary>
         /// Gets the device's properties.
         /// </summary>
         public PlayToDeviceInfo Properties { get; }
@@ -464,6 +483,11 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                 return null;
             }
 
+            if (friendlyNames.Count == 0)
+            {
+                friendlyNames.Add(url.OriginalString);
+            }
+
             var deviceProperties = new PlayToDeviceInfo(string.Join(" ", friendlyNames), $"http://{url.Host}:{url.Port}", uuid.Value);
 
             var model = document.Descendants(_ud.GetName("modelName")).FirstOrDefault();
@@ -541,24 +565,19 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
         /// <param name="httpClientFactory">The <see cref="IHttpClientFactory"/> instance.</param>
         /// <param name="logger">The <see cref="ILogger"/> instance.</param>
         /// <param name="serverAddress">The server address to embed in the Didl.</param>
-        /// <param name="profileManager">The <see cref="ProfileManager"/>.</param>
         /// <returns>The <see cref="Task"/>.</returns>
         public static async Task<PlayToDevice> CreateDevice(
             PlayToDeviceInfo deviceProperties,
             IHttpClientFactory httpClientFactory,
             ILogger logger,
-            string serverAddress,
-            ProfileManager profileManager)
+            string serverAddress)
         {
             var device = new PlayToDevice(deviceProperties, httpClientFactory, logger, serverAddress);
 
             // Get device capabilities.
-            deviceProperties.Capabilities = await device.GetProtocolInfo().ConfigureAwait(false);
+            var capabilities = await device.GetProtocolInfo().ConfigureAwait(false);
 
-            device.Profile = profileManager.GetProfile(deviceProperties);
-
-            // Memory Optimization: Value is not longer required, so free up string.
-            deviceProperties.Capabilities = string.Empty;
+            device.Profile = DlnaProfileManager.Instance!.GetProfile(deviceProperties, capabilities);
             return device;
         }
 
@@ -772,7 +791,6 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
 
             // Not all devices auto-play after loading media (eg. Hisense)
             QueueEvent(QueueCommands.Play);
-            return;
         }
 
         /// <summary>
@@ -897,7 +915,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
 
         private static string PrettyPrint(HttpHeaders m)
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
             foreach (var (key, value) in m)
             {
                 sb.Append(key);
@@ -942,7 +960,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                     using var reader = new StreamReader(stream, Encoding.UTF8);
                     reply = await reader.ReadToEndAsync().ConfigureAwait(false);
 
-                    if (XmlUtilities.ParseXML(reply, out XElement? doc))
+                    if (XmlUtilities.ParseXml(reply, out XElement? doc))
                     {
                         if (Tracing)
                         {
@@ -987,7 +1005,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                 return service;
             }
 
-            var commands = await GetProtocolAsync(Properties.Services[(int)serviceType]).ConfigureAwait(false);
+            var commands = await GetProtocolAsync(Services[(int)serviceType]).ConfigureAwait(false);
             if (commands == null)
             {
                 _logger.LogWarning("{Name}: GetProtocolAsync for {serviceType} returned null.", Properties.Name, serviceType);
@@ -1348,7 +1366,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
 
             var url = NormalizeUrl(Properties.BaseUrl, service.ControlUrl);
             var stopWatch = new Stopwatch();
-            CancellationTokenSource cts = new CancellationTokenSource();
+            var cts = new CancellationTokenSource();
 
             using var options = new HttpRequestMessage(HttpMethod.Post, url);
             options.Headers.UserAgent.ParseAdd(UserAgent);
@@ -1376,10 +1394,10 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
 
                 var response = await _httpClientFactory
                     .CreateClient(NamedClient.Default)
-                    .SendAsync(options, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+                    .SendAsync(options, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
 
                 // Get the response.
-                using CancellationTokenSource responseCts = new CancellationTokenSource();
+                using var responseCts = new CancellationTokenSource();
                 cts.CancelAfter(CtsTimeout);
                 await using var stream = await response.Content.ReadAsStreamAsync(responseCts.Token).ConfigureAwait(false);
                 using var reader = new StreamReader(stream, Encoding.UTF8);
@@ -1401,7 +1419,6 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                     url,
                     PrettyPrint(options.Headers),
                     postData.Replace(">", ">\r\n", StringComparison.Ordinal));
-
                 _logger.LogError(ex, msg);
                 return null;
             }
@@ -1440,7 +1457,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
 
             string? postData;
 
-            var service = Properties.Services[(int)serviceType];
+            var service = Services[(int)serviceType];
             var commands = await GetServiceCommands(serviceType).ConfigureAwait(false);
             var command = commands?.ServiceActions.FirstOrDefault(c => c.Name == actionCommand);
             if (service == null)
@@ -1585,7 +1602,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                 _logger.LogDebug("->{Name}:\r\nHeaders: {Headers:l}", url, PrettyPrint(options.Headers));
             }
 
-            CancellationTokenSource cts = new CancellationTokenSource();
+            var cts = new CancellationTokenSource();
             try
             {
                 cts.CancelAfter(CtsTimeout);
@@ -1609,7 +1626,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                         _logger.LogDebug("{Name}: SUBSCRIBE successful.", Properties.Name);
                     }
 
-                    return response?.Headers.GetValues("SID").FirstOrDefault();
+                    return response.Headers.GetValues("SID").FirstOrDefault();
                 }
             }
             catch (TaskCanceledException)
@@ -1647,8 +1664,8 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                     DlnaPlayTo.Instance!.DlnaEvents += ProcessSubscriptionEvent;
 
                     // Subscribe to both AvTransport and RenderControl events.
-                    _transportSid = await SubscribeInternalAsync(Properties.AVTransport, _transportSid).ConfigureAwait(false);
-                    _renderSid = await SubscribeInternalAsync(Properties.RenderControl, _renderSid).ConfigureAwait(false);
+                    _transportSid = await SubscribeInternalAsync(AvTransport, _transportSid).ConfigureAwait(false);
+                    _renderSid = await SubscribeInternalAsync(RenderControl, _renderSid).ConfigureAwait(false);
 
                     if (Tracing)
                     {
@@ -1708,7 +1725,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                 _logger.LogDebug("-> {Name}:\r\nHeaders : {Headers:l}", url, PrettyPrint(options.Headers));
             }
 
-            CancellationTokenSource cts = new CancellationTokenSource();
+            var cts = new CancellationTokenSource();
             try
             {
                 cts.CancelAfter(CtsTimeout);
@@ -1760,14 +1777,14 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                     // stop processing events.
                     DlnaPlayTo.Instance!.DlnaEvents -= ProcessSubscriptionEvent;
 
-                    var success = await UnSubscribeInternalAsync(Properties.AVTransport, _transportSid).ConfigureAwait(false);
+                    var success = await UnSubscribeInternalAsync(AvTransport, _transportSid).ConfigureAwait(false);
                     if (success)
                     {
                         // Keep Sid in case the user interacts with this device.
                         _transportSid = string.Empty;
                     }
 
-                    success = await UnSubscribeInternalAsync(Properties.RenderControl, _renderSid).ConfigureAwait(false);
+                    success = await UnSubscribeInternalAsync(RenderControl, _renderSid).ConfigureAwait(false);
                     if (success)
                     {
                         _renderSid = string.Empty;
@@ -1968,7 +1985,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                     }
                     else
                     {
-                        var response = await SendCommandResponseRequired(ServiceType.AVTransport, "GetPositionInfo").ConfigureAwait(false);
+                        var response = await SendCommandResponseRequired(ServiceType.AvTransport, "GetPositionInfo").ConfigureAwait(false);
                         if (response == null || response.Count == 0)
                         {
                             RestartTimer(Normal);
@@ -2144,7 +2161,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                 return false;
             }
 
-            if (!await SendCommand(ServiceType.AVTransport, "Pause", 1).ConfigureAwait(false))
+            if (!await SendCommand(ServiceType.AvTransport, "Pause", 1).ConfigureAwait(false))
             {
                 return false;
             }
@@ -2163,7 +2180,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                 return false;
             }
 
-            if (!await SendCommand(ServiceType.AVTransport, "Play", 1).ConfigureAwait(false))
+            if (!await SendCommand(ServiceType.AvTransport, "Play", 1).ConfigureAwait(false))
             {
                 return false;
             }
@@ -2182,7 +2199,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                 return false;
             }
 
-            if (!await SendCommand(ServiceType.AVTransport, "Stop", 1).ConfigureAwait(false))
+            if (!await SendCommand(ServiceType.AvTransport, "Stop", 1).ConfigureAwait(false))
             {
                 return false;
             }
@@ -2210,7 +2227,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                 return TransportState;
             }
 
-            var response = await SendCommandResponseRequired(ServiceType.AVTransport, "GetTransportInfo").ConfigureAwait(false);
+            var response = await SendCommandResponseRequired(ServiceType.AvTransport, "GetTransportInfo").ConfigureAwait(false);
             if (response != null && response.ContainsKey("GetTransportInfoResponse"))
             {
                 if (response.TryGetValue("CurrentTransportState", out string? transportState))
@@ -2283,11 +2300,6 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
 
         private async Task<bool> SendMediaRequest(MediaData settings, bool immediate)
         {
-            if (settings.Url == null)
-            {
-                return false;
-            }
-
             var cmd = immediate ? "SetAVTransportURI" : "SetNextAVTransportURI";
 
             if (Tracing)
@@ -2304,10 +2316,10 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
             var dictionary = new Dictionary<string, string>
             {
                 { "CurrentURI", settings.Url },
-                { "CurrentURIMetaData",  settings.Metadata }
+                { "CurrentURIMetaData",  Profile.EncodeContextOnTransmission ? HttpUtility.HtmlEncode(settings.Metadata) : settings.Metadata }
             };
 
-            if (!await SendCommand(ServiceType.AVTransport, cmd, settings.Url, dictionary: dictionary, header: settings.Headers).ConfigureAwait(false))
+            if (!await SendCommand(ServiceType.AvTransport, cmd, settings.Url, dictionary: dictionary, header: settings.Headers).ConfigureAwait(false))
             {
                 return false;
             }
@@ -2343,7 +2355,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                 return CurrentMediaInfo;
             }
 
-            var response = await SendCommandResponseRequired(ServiceType.AVTransport, "GetMediaInfo").ConfigureAwait(false);
+            var response = await SendCommandResponseRequired(ServiceType.AvTransport, "GetMediaInfo").ConfigureAwait(false);
             if (response != null && response.ContainsKey("GetMediaInfoResponse"))
             {
                 _lastMetaRefresh = DateTime.UtcNow;
@@ -2376,7 +2388,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
             }
 
             if (!await SendCommand(
-                ServiceType.AVTransport,
+                ServiceType.AvTransport,
                 "Seek",
                 string.Format(CultureInfo.InvariantCulture, "{0:hh}:{0:mm}:{0:ss}", value),
                 "REL_TIME").ConfigureAwait(false))
@@ -2404,7 +2416,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
             // Update position information.
             try
             {
-                var response = await SendCommandResponseRequired(ServiceType.AVTransport, "GetPositionInfo").ConfigureAwait(false);
+                var response = await SendCommandResponseRequired(ServiceType.AvTransport, "GetPositionInfo").ConfigureAwait(false);
                 if (response != null && response.ContainsKey("GetPositionInfoResponse"))
                 {
                     if (response.TryGetValue("TrackDuration", out string? value) && TimeSpan.TryParse(value, CultureDefault.UsCulture, out TimeSpan d))
@@ -2521,7 +2533,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
             catch (Exception ex)
 #pragma warning restore CA1031 // Do not catch general exception types
             {
-                _logger.LogError(ex, "{Name}: UpdateMediaInfo errored.", Properties.Name);
+                _logger.LogError(ex, "{Name}: UpdateMediaInfo erred.", Properties.Name);
             }
         }
 

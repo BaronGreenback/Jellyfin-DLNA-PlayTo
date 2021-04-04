@@ -3,10 +3,10 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using Jellyfin.Api;
-using Jellyfin.Plugin.Ssdp.EventArgs;
+using Jellyfin.Plugin.Dlna.EventArgs;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Jellyfin.Plugin.DlnaPlayTo.Api.Controller
+namespace Jellyfin.Plugin.Dlna.PlayTo.Api
 {
     /// <summary>
     /// Dlna PlayTo Controller.
@@ -30,7 +30,9 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Api.Controller
                 var response = await reader.ReadToEndAsync().ConfigureAwait(false);
                 await DlnaPlayTo.Instance!.NotifyDevice(new DlnaEventArgs(id, response)).ConfigureAwait(false);
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch
+#pragma warning restore CA1031 // Do not catch general exception types
             {
                 // Ignore connection forcible closed messages.
             }

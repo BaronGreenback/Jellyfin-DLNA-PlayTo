@@ -1,6 +1,6 @@
-using Jellyfin.Plugin.DlnaPlayTo.Model;
+using Jellyfin.Plugin.Dlna.PlayTo.Model;
 
-namespace Jellyfin.Plugin.DlnaPlayTo.EventArgs
+namespace Jellyfin.Plugin.Dlna.PlayTo.EventArgs
 {
     /// <summary>
     /// Defines the <see cref="MediaChangedEventArgs" />.

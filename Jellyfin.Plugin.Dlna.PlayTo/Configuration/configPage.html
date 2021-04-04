@@ -29,17 +29,6 @@
                             </div>
                             <div class="checkboxContainer checkboxContainer-withDescripton">
                                 <label class="emby-checkbox-label" style="display:block">
-                                    <input id="AutoCreatePlayToProfiles" name="AutoCreatePlayToProfiles" type="checkbox" is="emby-checkbox" class="emby-checkbox" />
-                                    <span class="checkboxLabel">
-                                        Automatically create xml profiles for unknown devices.
-                                    </span>
-                                    <span class="checkboxOutline"><span class="material-icons checkboxIcon checkboxIcon-checked check"></span><span class="material-icons checkboxIcon checkboxIcon-unchecked "></span></span>
-                                </label>
-                                <div class="fieldDescription checkboxFieldDescription">Enable this option if you wish to build your own device profile. Profiles are stored in the /config/dlna/user folder.</div>
-                            </div>
-
-                            <div class="checkboxContainer checkboxContainer-withDescripton">
-                                <label class="emby-checkbox-label" style="display:block">
                                     <input id="EnablePlayToDebug" name="EnablePlayToDebug" type="checkbox" is="emby-checkbox" class="emby-checkbox" />
                                     <span class="checkboxLabel">
                                         Enable PlayTo Device Debug Logging
@@ -85,7 +74,6 @@
                 document.querySelector("#PlayToConfigPage")
                     .addEventListener("pageshow", function () {
                         ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
-                            document.querySelector('#AutoCreatePlayToProfiles').checked = config.AutoCreatePlayToProfiles;
                             document.querySelector('#ClientDiscoveryIntervalSeconds').value = config.ClientDiscoveryIntervalSeconds;
                             document.querySelector('#ClientNotificationInterval').value = config.ClientNotificationInterval;                            
                             document.querySelector('#EnablePlayToDebug').checked = config.EnablePlayToDebug;
@@ -99,7 +87,6 @@
                     .addEventListener('submit', function (e) {
                         Dashboard.showLoadingMsg();
                         ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
-                            config.AutoCreatePlayToProfiles = document.querySelector('#AutoCreatePlayToProfiles').checked;
                             config.ClientDiscoveryIntervalSeconds = document.querySelector('#ClientDiscoveryIntervalSeconds').value;
                             config.ClientNotificationInterval = document.querySelector('#ClientNotificationInterval').value; 
                             config.EnablePlayToDebug = document.querySelector('#EnablePlayToDebug').checked;

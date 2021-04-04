@@ -4,12 +4,12 @@
         <name>Jellyfin.Plugin.DlnaPlayTo</name>
     </assembly>
     <members>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Api.Controller.DlnaPlayToController">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Api.DlnaPlayToController">
             <summary>
             Dlna PlayTo Controller.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Api.Controller.DlnaPlayToController.ProcessDeviceNotification(System.String)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Api.DlnaPlayToController.ProcessDeviceNotification(System.String)">
             <summary>
             Processes device subscription events.
             Has to be a url, as the XML content from devices can be corrupt.
@@ -17,117 +17,108 @@
             <param name="id">Id of the device.</param>
             <returns>Event subscription response.</returns>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Api.Controller.HttpNotifyAttribute">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Api.HttpNotifyAttribute">
             <summary>
             Identifies an action that supports the HTTP GET method.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Api.Controller.HttpNotifyAttribute.#ctor">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Api.HttpNotifyAttribute.#ctor(System.String)">
             <summary>
-            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Api.Controller.HttpNotifyAttribute"/> class.
-            </summary>
-        </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Api.Controller.HttpNotifyAttribute.#ctor(System.String)">
-            <summary>
-            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Api.Controller.HttpNotifyAttribute"/> class.
+            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Api.HttpNotifyAttribute"/> class.
             </summary>
             <param name="template">The route template. May not be null.</param>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration">
             <summary>
-            Defines the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration" />.
+            Defines the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration" />.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.CtsTimeout">
-            <summary>
-            Gets or sets the maximum wait time for http responses from devices (ms).
-            </summary>
-        </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.EnablePlayToDebug">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.EnablePlayToDebug">
             <summary>
             Gets or sets a value indicating whether detailed playTo debug logs are sent to the console/log.
             If the setting "Emby.Dlna.PlayTo": "Debug" must be set in logging.default.json for this property to work.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.ClientDiscoveryIntervalSeconds">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.ClientDiscoveryIntervalSeconds">
             <summary>
             Gets or sets the initial ssdp client discovery interval time (in seconds).
-            Once a device has been detected, this discovery interval will drop to <seealso cref="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.ClientNotificationInterval"/> seconds.
+            Once a device has been detected, this discovery interval will drop to <seealso cref="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.ClientNotificationInterval"/> seconds.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.ClientNotificationInterval">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.ClientNotificationInterval">
             <summary>
             Gets or sets the continuous ssdp client discovery interval time (in seconds).
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.AutoCreatePlayToProfiles">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.AutoCreatePlayToProfiles">
             <summary>
             Gets or sets a value indicating whether disk profiles should be created for devices that are unknown.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.CommunicationTimeout">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.CommunicationTimeout">
             <summary>
             Gets or sets the amount of time given for the device to respond in ms.
             Setting this too low will result in JF not knowing the device is streaming.
             Note: Some devices don't respond until the device starts streaming.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.UserAgent">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.UserAgent">
             <summary>
             Gets or sets the USERAGENT that is sent to devices.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.TimerInterval">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.TimerInterval">
             <summary>
             Gets or sets the frequency of the device polling (ms).
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.QueueInterval">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.QueueInterval">
             <summary>
             Gets or sets a value indicating the command queue processing frequency (ms).
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.FriendlyName">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.FriendlyName">
             <summary>
             Gets or sets the friendly name that is used.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.Configuration">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.Configuration">
             <summary>
             Gets the SSDP Configuration settings.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.EnableSsdpTracing">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.EnableSsdpTracing">
             <summary>
             Gets or sets a value indicating whether detailed SSDP logs are sent to the console/log.
             "Emby.Dlna": "Debug" must be set in logging.default.json for this property to have any effect.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.SsdpTracingFilter">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.SsdpTracingFilter">
             <summary>
             Gets or sets a value indicating whether an IP address is to be used to filter the detailed ssdp logs that are being sent to the console/log.
             If the setting "Emby.Dlna": "Debug" must be set in logging.default.json for this property to work.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.UdpPortRange">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.UdpPortRange">
             <summary>
             Gets or sets the range of UDP ports to use in communications as well as 1900.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Configuration.PlayToConfiguration.SetConfigurationManager(MediaBrowser.Common.Configuration.IConfigurationManager)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Configuration.PlayToConfiguration.SetConfigurationManager(MediaBrowser.Common.Configuration.IConfigurationManager,System.EventHandler{MediaBrowser.Model.Plugins.BasePluginConfiguration})">
             <summary>
             Defines the configuration manager to use.
             </summary>
             <param name="config">The <see cref="T:MediaBrowser.Common.Configuration.IConfigurationManager"/> instance.</param>
+            <param name="handler">The event handler to fire on change.</param>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.DlnaPlayTo">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.DlnaPlayTo">
             <summary>
-            Defines the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.DlnaPlayTo" />.
+            Defines the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.DlnaPlayTo" />.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.DlnaPlayTo.#ctor(MediaBrowser.Common.Configuration.IApplicationPaths,MediaBrowser.Model.Serialization.IXmlSerializer,Microsoft.Extensions.Logging.ILoggerFactory,MediaBrowser.Controller.Session.ISessionManager,MediaBrowser.Controller.Library.ILibraryManager,MediaBrowser.Controller.Library.IUserManager,MediaBrowser.Controller.IServerApplicationHost,MediaBrowser.Controller.Drawing.IImageProcessor,System.Net.Http.IHttpClientFactory,MediaBrowser.Controller.Configuration.IServerConfigurationManager,MediaBrowser.Controller.Library.IUserDataManager,MediaBrowser.Model.Globalization.ILocalizationManager,MediaBrowser.Controller.Library.IMediaSourceManager,MediaBrowser.Controller.MediaEncoding.IMediaEncoder,MediaBrowser.Controller.Notifications.INotificationManager,MediaBrowser.Common.Net.INetworkManager,Jellyfin.Plugin.Ssdp.Profiles.IDlnaProfileManager)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.DlnaPlayTo.#ctor(MediaBrowser.Common.Configuration.IApplicationPaths,MediaBrowser.Model.Serialization.IXmlSerializer,Microsoft.Extensions.Logging.ILoggerFactory,MediaBrowser.Controller.Session.ISessionManager,MediaBrowser.Controller.Library.ILibraryManager,MediaBrowser.Controller.Library.IUserManager,MediaBrowser.Controller.IServerApplicationHost,MediaBrowser.Controller.Drawing.IImageProcessor,System.Net.Http.IHttpClientFactory,MediaBrowser.Controller.Configuration.IServerConfigurationManager,MediaBrowser.Controller.Library.IUserDataManager,MediaBrowser.Model.Globalization.ILocalizationManager,MediaBrowser.Controller.Library.IMediaSourceManager,MediaBrowser.Controller.MediaEncoding.IMediaEncoder,MediaBrowser.Controller.Notifications.INotificationManager,MediaBrowser.Common.Net.INetworkManager,Jellyfin.Plugin.Dlna.Profiles.IDlnaProfileManager)">
             <summary>
-            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.DlnaPlayTo"/> class.
+            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.DlnaPlayTo"/> class.
             </summary>
             <param name="applicationPaths">The <see cref="T:MediaBrowser.Common.Configuration.IApplicationPaths"/>.</param>
             <param name="xmlSerializer">The <see cref="T:MediaBrowser.Model.Serialization.IXmlSerializer"/>.</param>
@@ -145,104 +136,104 @@
             <param name="mediaEncoder">The <see cref="T:MediaBrowser.Controller.MediaEncoding.IMediaEncoder"/>.</param>
             <param name="notificationManager">The <see cref="T:MediaBrowser.Controller.Notifications.INotificationManager"/>.</param>
             <param name="networkManager">The <see cref="T:MediaBrowser.Common.Net.INetworkManager"/>.</param>
-            <param name="dlnaProfileManager">The <see cref="T:Jellyfin.Plugin.Ssdp.Profiles.IDlnaProfileManager"/>.</param>
+            <param name="dlnaProfileManager">The <see cref="T:Jellyfin.Plugin.Dlna.Profiles.IDlnaProfileManager"/>.</param>
         </member>
-        <member name="E:Jellyfin.Plugin.DlnaPlayTo.DlnaPlayTo.DlnaEvents">
+        <member name="E:Jellyfin.Plugin.Dlna.PlayTo.DlnaPlayTo.DlnaEvents">
             <summary>
             An event handler that is triggered on receipt of a PlayTo client subscription event.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.DlnaPlayTo.Instance">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.DlnaPlayTo.Instance">
             <summary>
             Gets or sets the Instance.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.DlnaPlayTo.Name">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.DlnaPlayTo.Name">
             <summary>
             Gets the Plugin Name.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.DlnaPlayTo.Id">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.DlnaPlayTo.Id">
             <summary>
             Gets the Id.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.DlnaPlayTo.GetPages">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.DlnaPlayTo.GetPages">
             <summary>
             The GetPages.
             </summary>
             <returns>The <see cref="T:System.Collections.Generic.IEnumerable`1"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.DlnaPlayTo.NotifyDevice(Jellyfin.Plugin.Ssdp.EventArgs.DlnaEventArgs)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.DlnaPlayTo.NotifyDevice(Jellyfin.Plugin.Dlna.EventArgs.DlnaEventArgs)">
             <summary>
             Method that triggers a DLNAEvents event.
             </summary>
             <param name="args">A DlnaEventArgs instance containing the event message.</param>
             <returns>An awaitable <see cref="T:System.Threading.Tasks.Task"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.DlnaPlayTo.Dispose">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.DlnaPlayTo.Dispose">
             <inheritdoc />
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.DlnaPlayTo.SendNotification(MediaBrowser.Model.Notifications.NotificationRequest)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.DlnaPlayTo.SendNotification(MediaBrowser.Model.Notifications.NotificationRequest)">
             <summary>
             Sends a client notification message.
             </summary>
             <param name="notification">The notification to send.</param>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.DlnaPlayTo.Dispose(System.Boolean)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.DlnaPlayTo.Dispose(System.Boolean)">
             <summary>
             Override this method and dispose any objects you own the lifetime of if disposing is true.
             </summary>
             <param name="disposing">True if managed objects should be disposed, if false, only unmanaged resources should be released.</param>
             <returns>The <see cref="T:System.Threading.Tasks.Task"/>.</returns>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.EventArgs.MediaChangedEventArgs">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.EventArgs.MediaChangedEventArgs">
             <summary>
-            Defines the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.EventArgs.MediaChangedEventArgs" />.
+            Defines the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.EventArgs.MediaChangedEventArgs" />.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.EventArgs.MediaChangedEventArgs.#ctor(Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject,Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.EventArgs.MediaChangedEventArgs.#ctor(Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject,Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject)">
             <summary>
-            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.EventArgs.MediaChangedEventArgs"/> class.
+            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.EventArgs.MediaChangedEventArgs"/> class.
             </summary>
-            <param name="previousMediaInfo">The <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject"/> containing the previous media.</param>
-            <param name="mediaInfo">The <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject"/> containing the current media.</param>
+            <param name="previousMediaInfo">The <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject"/> containing the previous media.</param>
+            <param name="mediaInfo">The <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject"/> containing the current media.</param>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.EventArgs.MediaChangedEventArgs.OldMediaInfo">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.EventArgs.MediaChangedEventArgs.OldMediaInfo">
             <summary>
             Gets the previous media.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.EventArgs.MediaChangedEventArgs.NewMediaInfo">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.EventArgs.MediaChangedEventArgs.NewMediaInfo">
             <summary>
             Gets the current media.
             </summary>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.EventArgs.PlaybackEventArgs">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.EventArgs.PlaybackEventArgs">
             <summary>
-            Defines the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.EventArgs.PlaybackEventArgs" />.
+            Defines the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.EventArgs.PlaybackEventArgs" />.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.EventArgs.PlaybackEventArgs.#ctor(Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.EventArgs.PlaybackEventArgs.#ctor(Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject)">
             <summary>
-            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.EventArgs.PlaybackEventArgs"/> class.
+            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.EventArgs.PlaybackEventArgs"/> class.
             </summary>
-            <param name="mediaInfo">The mediaInfo<see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject"/>.</param>
+            <param name="mediaInfo">The mediaInfo<see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject"/>.</param>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.EventArgs.PlaybackEventArgs.MediaInfo">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.EventArgs.PlaybackEventArgs.MediaInfo">
             <summary>
             Gets the MediaInfo.
             </summary>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController">
             <summary>
-            Defines the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController" />.
+            Defines the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController" />.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.#ctor(MediaBrowser.Controller.Session.SessionInfo,MediaBrowser.Controller.Session.ISessionManager,MediaBrowser.Controller.Library.ILibraryManager,Microsoft.Extensions.Logging.ILogger,MediaBrowser.Controller.Library.IUserManager,MediaBrowser.Controller.Drawing.IImageProcessor,System.String,System.String,Jellyfin.Plugin.Ssdp.SsdpLocator,MediaBrowser.Controller.Library.IUserDataManager,MediaBrowser.Model.Globalization.ILocalizationManager,MediaBrowser.Controller.Library.IMediaSourceManager,MediaBrowser.Controller.Configuration.IServerConfigurationManager,MediaBrowser.Controller.MediaEncoding.IMediaEncoder,Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.#ctor(MediaBrowser.Controller.Session.SessionInfo,MediaBrowser.Controller.Session.ISessionManager,MediaBrowser.Controller.Library.ILibraryManager,Microsoft.Extensions.Logging.ILogger,MediaBrowser.Controller.Library.IUserManager,MediaBrowser.Controller.Drawing.IImageProcessor,System.String,System.String,Jellyfin.Plugin.Dlna.SsdpLocator,MediaBrowser.Controller.Library.IUserDataManager,MediaBrowser.Model.Globalization.ILocalizationManager,MediaBrowser.Controller.Library.IMediaSourceManager,MediaBrowser.Controller.Configuration.IServerConfigurationManager,MediaBrowser.Controller.MediaEncoding.IMediaEncoder,Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice)">
             <summary>
-            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController"/> class.
+            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController"/> class.
             </summary>
             <param name="session">The <see cref="T:MediaBrowser.Controller.Session.SessionInfo"/>.</param>
             <param name="sessionManager">The <see cref="T:MediaBrowser.Controller.Session.ISessionManager"/>.</param>
@@ -252,202 +243,202 @@
             <param name="imageProcessor">The <see cref="T:MediaBrowser.Controller.Drawing.IImageProcessor"/>.</param>
             <param name="serverAddress">The server address.</param>
             <param name="accessToken">The access token.</param>
-            <param name="deviceDiscovery">The <see cref="T:Jellyfin.Plugin.Ssdp.SsdpLocator"/>.</param>
+            <param name="deviceDiscovery">The <see cref="T:Jellyfin.Plugin.Dlna.SsdpLocator"/>.</param>
             <param name="userDataManager">The <see cref="T:MediaBrowser.Controller.Library.IUserDataManager"/>.</param>
             <param name="localization">The <see cref="T:MediaBrowser.Model.Globalization.ILocalizationManager"/>.</param>
             <param name="mediaSourceManager">The <see cref="T:MediaBrowser.Controller.Library.IMediaSourceManager"/>.</param>
             <param name="config">The <see cref="T:MediaBrowser.Controller.Configuration.IServerConfigurationManager"/>.</param>
             <param name="mediaEncoder">The mediaEncoder<see cref="T:MediaBrowser.Controller.MediaEncoding.IMediaEncoder"/>.</param>
-            <param name="device">The <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice"/>.</param>
+            <param name="device">The <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice"/>.</param>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.IsSessionActive">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.IsSessionActive">
             <summary>
             Gets a value indicating whether the session is active.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.SupportsMediaControl">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.SupportsMediaControl">
             <summary>
             Gets a value indicating whether the session supports media control.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.SendMessage``1(MediaBrowser.Model.Session.SessionMessageType,System.Guid,``0,System.Threading.CancellationToken)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.SendMessage``1(MediaBrowser.Model.Session.SessionMessageType,System.Guid,``0,System.Threading.CancellationToken)">
             <inheritdoc />
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.Dispose">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.Dispose">
             <inheritdoc />
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.ShufflePlaylist">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.ShufflePlaylist">
             <summary>
             Shuffles a list.
             https://stackoverflow.com/questions/273313/randomize-a-listt.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.SendNextTrackMessage">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.SendNextTrackMessage">
             <summary>
             Send a message to the DLNA device to notify what is the next track in the playlist.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.Dispose(System.Boolean)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.Dispose(System.Boolean)">
             <summary>
             Override this method and dispose any objects you own the lifetime of if disposing is true.
             </summary>
             <param name="disposing">True if managed objects should be disposed, if false, only unmanaged resources should be released.</param>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams">
             <summary>
-            Defines the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams"/> class.
+            Defines the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams"/> class.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams.#ctor(System.Guid)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams.#ctor(System.Guid)">
             <summary>
-            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams"/> class.
+            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams"/> class.
             </summary>
             <param name="itemId">The <see cref="T:System.Guid"/>.</param>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams.MediaSourceManager">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams.ItemId">
             <summary>
-            Gets or sets the media source manager.
+            Gets the ItemId.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams.ItemId">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams.IsDirectStream">
             <summary>
-            Gets or sets the ItemId.
+            Gets a value indicating whether IsDirectStream.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams.IsDirectStream">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams.StartPositionTicks">
             <summary>
-            Gets or sets a value indicating whether IsDirectStream.
+            Gets the StartPositionTicks.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams.StartPositionTicks">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams.AudioStreamIndex">
             <summary>
-            Gets or sets the StartPositionTicks.
+            Gets the AudioStreamIndex.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams.AudioStreamIndex">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams.SubtitleStreamIndex">
             <summary>
-            Gets or sets the AudioStreamIndex.
+            Gets the SubtitleStreamIndex.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams.SubtitleStreamIndex">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams.MediaSourceId">
             <summary>
-            Gets or sets the SubtitleStreamIndex.
+            Gets the MediaSourceId.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams.MediaSourceId">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams.Item">
             <summary>
-            Gets or sets the MediaSourceId.
+            Gets the Item.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams.LiveStreamId">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams.LiveStreamId">
             <summary>
             Gets or sets the LiveStreamId.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams.Item">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams.MediaSourceManager">
             <summary>
-            Gets or sets the Item.
+            Gets or sets the media source manager.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams.ParseFromUrl(System.String,MediaBrowser.Controller.Library.ILibraryManager,MediaBrowser.Controller.Library.IMediaSourceManager)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams.ParseFromUrl(System.String,MediaBrowser.Controller.Library.ILibraryManager,MediaBrowser.Controller.Library.IMediaSourceManager)">
             <summary>
             Parses a stream from a url.
             </summary>
             <param name="url">The url.</param>
             <param name="libraryManager">A <see cref="T:MediaBrowser.Controller.Library.ILibraryManager"/> instance.</param>
             <param name="mediaSourceManager">A <see cref="T:MediaBrowser.Controller.Library.IMediaSourceManager"/> instance.</param>
-            <returns>A <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams"/> instance.</returns>
+            <returns>A <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams"/> instance.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams.GetItemId(System.String)">
-            <summary>
-            Extracts the guid from the url.
-            </summary>
-            <param name="url">Url to parse.</param>
-            <returns>A <see cref="T:System.Guid"/>, or Guid.Empty if not found.</returns>
-        </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToController.StreamParams.GetMediaSource(System.Threading.CancellationToken)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams.GetMediaSource(System.Threading.CancellationToken)">
             <summary>
             Gets the media source.
             </summary>
             <param name="cancellationToken">A <see cref="T:System.Threading.CancellationToken"/>.</param>
             <returns>A <see cref="T:System.Threading.Tasks.Task`1"/> or null.</returns>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Main.ServiceType">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToController.StreamParams.GetItemId(System.String)">
+            <summary>
+            Extracts the guid from the url.
+            </summary>
+            <param name="url">Url to parse.</param>
+            <returns>A <see cref="T:System.Guid"/>, or Guid.Empty if not found.</returns>
+        </member>
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Main.ServiceType">
             <summary>
             Enum of service type indices.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.ServiceType.ConnectionManager">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.ServiceType.ConnectionManager">
             <summary>
             The index of the connection manager service.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.ServiceType.RenderControl">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.ServiceType.RenderControl">
             <summary>
             The index of the render control service.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.ServiceType.AVTransport">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.ServiceType.AvTransport">
             <summary>
             The index of the transport service.
             </summary>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands">
             <summary>
             Enum of queue commands.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands.Queue">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands.Queue">
             <summary>
             Queue command.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands.QueueNext">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands.QueueNext">
             <summary>
             Queue next whilst playing (Not supported on all devices).
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands.SetVolume">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands.SetVolume">
             <summary>
             Set device volume command.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands.Play">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands.Play">
             <summary>
             Play command.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands.Stop">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands.Stop">
             <summary>
             Stop command.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands.Pause">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands.Pause">
             <summary>
             Pause command.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands.Mute">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands.Mute">
             <summary>
             Mute sound.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands.UnMute">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands.UnMute">
             <summary>
             Unmute sound.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands.Seek">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands.Seek">
             <summary>
             Seek command.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands.ToggleMute">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands.ToggleMute">
             <summary>
             Toggle mute.
             </summary>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice">
              <summary>
              Code for managing a DLNA PlayTo device.
             
@@ -465,206 +456,206 @@
              caching to ensure the device isn't polled too frequently.
              </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Now">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Now">
             <summary>
             Constants used in SendCommand.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._volRange">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._volRange">
             <summary>
             Device's volume boundary values.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._serverAddress">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._serverAddress">
             <summary>
             Holds the URL for the Jellyfin web server.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._queue">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._queue">
             <summary>
             Outbound events processing queue.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._transportOffset">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._transportOffset">
             <summary>
             Host network response reply time.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._position">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._position">
             <summary>
             Holds the current playback position.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._connectFailureCount">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._connectFailureCount">
             <summary>
             Connection failure retry counter.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._muteVol">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._muteVol">
             <summary>
             Sound level prior to it being muted.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._subscribed">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._subscribed">
             <summary>
             True if this player is using subscription events.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._sessionId">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._sessionId">
             <summary>
             Unique id used in subscription callbacks.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._transportSid">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._transportSid">
             <summary>
             Transport service subscription SID value.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._renderSid">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._renderSid">
             <summary>
             Render service subscription SID value.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._volume">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._volume">
             <summary>
             Used by the volume control to stop DOS on volume queries.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._mediaType">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._mediaType">
             <summary>
             Media Type that is currently "loaded".
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._lastVolumeRefresh">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._lastVolumeRefresh">
             <summary>
             Hosts the last time we polled for the requests.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice._mediaPlaying">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice._mediaPlaying">
             <summary>
             Contains the item currently playing.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.#ctor(Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo,System.Net.Http.IHttpClientFactory,Microsoft.Extensions.Logging.ILogger,System.String)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.#ctor(Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo,System.Net.Http.IHttpClientFactory,Microsoft.Extensions.Logging.ILogger,System.String)">
             <summary>
-            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice"/> class.
+            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice"/> class.
             </summary>
-            <param name="playToDeviceInfo">The <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo"/> instance.</param>
+            <param name="playToDeviceInfo">The <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo"/> instance.</param>
             <param name="httpClientFactory">The <see cref="T:System.Net.Http.IHttpClientFactory"/> instance.</param>
             <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger"/> instance.</param>
             <param name="serverAddress">The server address to use in the response.</param>
         </member>
-        <member name="E:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.PlaybackStart">
+        <member name="E:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.PlaybackStart">
             <summary>
             Events called when playback starts.
             </summary>
         </member>
-        <member name="E:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.PlaybackProgress">
+        <member name="E:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.PlaybackProgress">
             <summary>
             Events called during playback.
             </summary>
         </member>
-        <member name="E:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.PlaybackStopped">
+        <member name="E:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.PlaybackStopped">
             <summary>
             Events called when playback stops.
             </summary>
         </member>
-        <member name="E:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.MediaChanged">
+        <member name="E:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.MediaChanged">
             <summary>
             Events called when the media changes.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.CtsTimeout">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.CtsTimeout">
             <summary>
             Gets or sets a value indicating the maximum wait time for http responses in ms.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.UserAgent">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.UserAgent">
             <summary>
             Gets or sets a value indicating the USERAGENT that is sent to devices.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.TimerInterval">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.TimerInterval">
             <summary>
             Gets or sets a value indicating the frequency of the device polling (ms).
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.QueueInterval">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.QueueInterval">
             <summary>
             Gets or sets a value indicating the user queue processing frequency (ms).
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.FriendlyName">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.FriendlyName">
             <summary>
             Gets or sets a value indicating the friendly name used with devices.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Properties">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Properties">
             <summary>
             Gets the device's properties.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.IsMuted">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.IsMuted">
             <summary>
             Gets a value indicating whether the sound is muted.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.CurrentMediaInfo">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.CurrentMediaInfo">
             <summary>
             Gets the current media information.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Volume">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Volume">
             <summary>
             Gets or sets the Volume.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Duration">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Duration">
             <summary>
             Gets the Duration.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Position">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Position">
             <summary>
             Gets or sets the Position.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.IsPlaying">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.IsPlaying">
             <summary>
             Gets a value indicating whether IsPlaying.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.IsPaused">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.IsPaused">
             <summary>
             Gets a value indicating whether IsPaused.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.IsStopped">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.IsStopped">
             <summary>
             Gets a value indicating whether IsStopped.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.OnDeviceUnavailable">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.OnDeviceUnavailable">
             <summary>
             Gets or sets the OnDeviceUnavailable.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Profile">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Profile">
             <summary>
             Gets or sets the device's profile.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Tracing">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Tracing">
             <summary>
             Gets a value indicating whether trace information should be redirected to the logs.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.TransportState">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.TransportState">
             <summary>
             Gets or sets the TransportState.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.ParseDevice(System.Uri,System.Net.Http.IHttpClientFactory,Microsoft.Extensions.Logging.ILogger)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.ParseDevice(System.Uri,System.Net.Http.IHttpClientFactory,Microsoft.Extensions.Logging.ILogger)">
             <summary>
             Generates a PlayToDeviceInfo from the device at the address contained in the url parameter."/>.
             </summary>
@@ -673,85 +664,85 @@
             <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger"/> instance.</param>
             <returns>The <see cref="T:System.Threading.Tasks.Task"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.CreateDevice(Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo,System.Net.Http.IHttpClientFactory,Microsoft.Extensions.Logging.ILogger,System.String,Jellyfin.Plugin.DlnaPlayTo.Profile.ProfileManager)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.CreateDevice(Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo,System.Net.Http.IHttpClientFactory,Microsoft.Extensions.Logging.ILogger,System.String,Jellyfin.Plugin.Dlna.PlayTo.Profile.ProfileManager)">
             <summary>
             Generates a PlayToDevice from the properties given."/>.
             </summary>
-            <param name="deviceProperties">The <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo"/> instance.</param>
+            <param name="deviceProperties">The <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo"/> instance.</param>
             <param name="httpClientFactory">The <see cref="T:System.Net.Http.IHttpClientFactory"/> instance.</param>
             <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger"/> instance.</param>
             <param name="serverAddress">The server address to embed in the Didl.</param>
-            <param name="profileManager">The <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Profile.ProfileManager"/>.</param>
+            <param name="profileManager">The <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Profile.ProfileManager"/>.</param>
             <returns>The <see cref="T:System.Threading.Tasks.Task"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.DeviceInitialise">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.DeviceInitialise">
             <summary>
             Starts the monitoring of the device.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.DeviceUnavailable">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.DeviceUnavailable">
             <summary>
             Called when the device becomes unavailable.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.VolumeDown">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.VolumeDown">
             <summary>
             Decreases the volume.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.VolumeUp">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.VolumeUp">
             <summary>
             Increases the volume.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.ToggleMute">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.ToggleMute">
             <summary>
             Toggles Mute.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Play">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Play">
             <summary>
             Starts playback.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Stop">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Stop">
             <summary>
             Stops playback.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Pause">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Pause">
             <summary>
             Pauses playback.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Mute">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Mute">
             <summary>
             Mutes the sound.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Unmute">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Unmute">
             <summary>
             Resumes the sound.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Seek(System.TimeSpan)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Seek(System.TimeSpan)">
             <summary>
             Moves playback to a specific point.
             </summary>
             <param name="value">The point at which playback will resume.</param>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.SetAvTransport(MediaBrowser.Model.Dlna.DlnaProfileType,System.Boolean,System.Uri,System.String,System.String,System.Boolean)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.SetAvTransport(MediaBrowser.Model.Dlna.DlnaProfileType,System.Boolean,System.Uri,System.String,System.String,System.Boolean)">
             <summary>
             Specifies new media to play.
             </summary>
@@ -763,7 +754,7 @@
             <param name="immediate">Set to true to effect an immediate change.</param>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.SetNextAvTransport(System.Uri,System.String,System.String)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.SetNextAvTransport(System.Uri,System.String,System.String)">
             <summary>
             Specifies new media to play.
             </summary>
@@ -771,38 +762,38 @@
             <param name="headers">Headers.</param>
             <param name="metadata">Media metadata.</param>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Dispose">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Dispose">
             <summary>
             Disposes this object.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.ToString">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.ToString">
             <summary>
             Returns a string representation of this object.
             </summary>
             <returns>The .</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Dispose(System.Boolean)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Dispose(System.Boolean)">
             <summary>
             Override this method and dispose any objects you own the lifetime of if disposing is true.
             </summary>
             <param name="disposing">True if managed objects should be disposed, if false, only unmanaged resources should be released.</param>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.CreateUBaseObject(System.Collections.Generic.Dictionary{System.String,System.String})">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.CreateUBaseObject(System.Collections.Generic.Dictionary{System.String,System.String})">
             <summary>
             Creates a UBaseObject from the information provided.
             </summary>
             <param name="properties">The XML properties.</param>
-            <returns>The <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject"/>.</returns>
+            <returns>The <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.Create(System.Xml.Linq.XElement)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.Create(System.Xml.Linq.XElement)">
             <summary>
             Creates a DeviceService from an XML element.
             </summary>
             <param name="element">The element.</param>
-            <returns>The <see cref="T:Jellyfin.Plugin.Ssdp.Model.DeviceService"/>.</returns>
+            <returns>The <see cref="T:Jellyfin.Plugin.Dlna.Model.DeviceService"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.GetDataAsync(System.Net.Http.IHttpClientFactory,System.Uri,Microsoft.Extensions.Logging.ILogger)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.GetDataAsync(System.Net.Http.IHttpClientFactory,System.Uri,Microsoft.Extensions.Logging.ILogger)">
             <summary>
             Gets service information from the DLNA clients.
             </summary>
@@ -811,19 +802,19 @@
             <param name="logger">ILogger instance.</param>
             <returns>The <see cref="T:System.Threading.Tasks.Task`1"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.RefreshVolumeIfNeeded">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.RefreshVolumeIfNeeded">
             <summary>
             Enables the volume bar hovered over effect.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.RestartTimer(System.Int32)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.RestartTimer(System.Int32)">
             <summary>
             Restart the polling timer.
             </summary>
             <param name="when">When to restart the timer. Less than 0 = never, 0 = instantly, greater than 0 in 1 second.</param>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.QueueEvent(Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands,System.Object)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.QueueEvent(Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands,System.Object)">
             <summary>
             Adds an event to the user control queue.
             Later identical events overwrite earlier ones.
@@ -831,12 +822,12 @@
             <param name="command">Command to queue.</param>
             <param name="value">Command parameter.</param>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.AddOrCancelIfQueued(Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.AddOrCancelIfQueued(Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands)">
             <summary>
             Removes an event from the queue if it exists, or adds it if it doesn't.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.TryPop(System.Collections.Generic.KeyValuePair{Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands,System.Object}@,System.Collections.Generic.KeyValuePair{Jellyfin.Plugin.DlnaPlayTo.Main.QueueCommands,System.Object})">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.TryPop(System.Collections.Generic.KeyValuePair{Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands,System.Object}@,System.Collections.Generic.KeyValuePair{Jellyfin.Plugin.Dlna.PlayTo.Main.QueueCommands,System.Object})">
             <summary>
             Gets the next item from the queue.
             </summary>
@@ -844,17 +835,17 @@
             <param name="defaultAction">The value to return if not successful.</param>
             <returns>Success of the operation.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.SendCommandAsync(Jellyfin.Plugin.Ssdp.Model.DeviceService,System.String,System.String,System.String)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.SendCommandAsync(Jellyfin.Plugin.Dlna.Model.DeviceService,System.String,System.String,System.String)">
             <summary>
             Sends a command to the DLNA device.
             </summary>
-            <param name="service">The <see cref="T:Jellyfin.Plugin.Ssdp.Model.DeviceService"/> to use.</param>
+            <param name="service">The <see cref="T:Jellyfin.Plugin.Dlna.Model.DeviceService"/> to use.</param>
             <param name="command">Command to send.</param>
             <param name="postData">Information to post.</param>
             <param name="header">Headers to include.</param>
             <returns>The <see cref="T:System.Threading.Tasks.Task"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.SendCommandResponseRequired(Jellyfin.Plugin.DlnaPlayTo.Main.ServiceType,System.String,System.Object,System.String,System.Collections.Generic.Dictionary{System.String,System.String},System.String)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.SendCommandResponseRequired(Jellyfin.Plugin.Dlna.PlayTo.Main.ServiceType,System.String,System.Object,System.String,System.Collections.Generic.Dictionary{System.String,System.String},System.String)">
             <summary>
             Sends a command to the device and waits for a response.
             </summary>
@@ -866,7 +857,7 @@
             <param name="header">The header.</param>
             <returns>The <see cref="T:System.Threading.Tasks.Task`1"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.SendCommand(Jellyfin.Plugin.DlnaPlayTo.Main.ServiceType,System.String,System.Object,System.String,System.Collections.Generic.Dictionary{System.String,System.String},System.String)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.SendCommand(Jellyfin.Plugin.Dlna.PlayTo.Main.ServiceType,System.String,System.Object,System.String,System.Collections.Generic.Dictionary{System.String,System.String},System.String)">
             <summary>
             Sends a command to the device, verifies receipt, and does return a response.
             </summary>
@@ -878,392 +869,382 @@
             <param name="header">The header.</param>
             <returns>Returns success of the task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.SubscribeInternalAsync(Jellyfin.Plugin.Ssdp.Model.DeviceService,System.String)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.SubscribeInternalAsync(Jellyfin.Plugin.Dlna.Model.DeviceService,System.String)">
             <summary>
             Checks to see if DLNA subscriptions are implemented, and if so subscribes to changes.
             </summary>
-            <param name="service">The service<see cref="T:Jellyfin.Plugin.Ssdp.Model.DeviceService"/>.</param>
+            <param name="service">The service<see cref="T:Jellyfin.Plugin.Dlna.Model.DeviceService"/>.</param>
             <param name="sid">The SID for renewal, or null for subscription.</param>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.SubscribeAsync">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.SubscribeAsync">
             <summary>
             Attempts to subscribe to the multiple services of a DLNA client.
             </summary>
             <returns>The <see cref="T:System.Threading.Tasks.Task"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.ResubscribeToEvents">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.ResubscribeToEvents">
             <summary>
             Resubscribe to DLNA events.
             Use in the event trigger, as an async wrapper.
             </summary>
             <returns>The <see cref="T:System.Threading.Tasks.Task"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.UnSubscribeInternalAsync(Jellyfin.Plugin.Ssdp.Model.DeviceService,System.String)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.UnSubscribeInternalAsync(Jellyfin.Plugin.Dlna.Model.DeviceService,System.String)">
             <summary>
             Attempts to unsubscribe from a DLNA client.
             </summary>
-            <param name="service">The service<see cref="T:Jellyfin.Plugin.Ssdp.Model.DeviceService"/>.</param>
+            <param name="service">The service<see cref="T:Jellyfin.Plugin.Dlna.Model.DeviceService"/>.</param>
             <param name="sid">The sid.</param>
             <returns>Returns success of the task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.UnSubscribeAsync">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.UnSubscribeAsync">
             <summary>
             Attempts to unsubscribe from the multiple services of the DLNA client.
             </summary>
             <returns>The <see cref="T:System.Threading.Tasks.Task"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.ProcessSubscriptionEvent(System.Object,Jellyfin.Plugin.Ssdp.EventArgs.DlnaEventArgs)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.ProcessSubscriptionEvent(System.Object,Jellyfin.Plugin.Dlna.EventArgs.DlnaEventArgs)">
             <summary>
             This method gets called with the information the DLNA clients have passed through eventing.
             </summary>
             <param name="sender">PlayToController object.</param>
             <param name="args">Arguments passed from DLNA player.</param>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.TimerCallback(System.Object)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.TimerCallback(System.Object)">
             <summary>
             Timer Callback function that polls the DLNA status.
             </summary>
             <param name="sender">The sender.</param>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.GetVolume">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.GetVolume">
             <summary>
             Requests the volume setting from the client.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.GetProtocolInfo">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.GetProtocolInfo">
             <summary>
             Requests the volume setting from the client.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.GetTransportStatus">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.GetTransportStatus">
             <summary>
             Returns information associated with the current transport state of the specified instance.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.GetMute">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.GetMute">
             <summary>
             Gets the mute setting from the client.
             </summary>
             <returns>Task.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.GetMediaInfo">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.GetMediaInfo">
             <summary>
             Runs the GetMediaInfo command.
             </summary>
             <returns>The <see cref="T:System.Threading.Tasks.Task`1"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.GetProtocolAsync(Jellyfin.Plugin.Ssdp.Model.DeviceService)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.GetProtocolAsync(Jellyfin.Plugin.Dlna.Model.DeviceService)">
             <summary>
             Retrieves SSDP protocol information.
             </summary>
             <param name="services">The service to extract.</param>
             <returns>The <see cref="T:System.Threading.Tasks.Task`1"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.UpdateMediaInfo(Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.UpdateMediaInfo(Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject)">
             <summary>
             Updates the media info, firing events.
             </summary>
-            <param name="mediaInfo">The mediaInfo<see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject"/>.</param>
+            <param name="mediaInfo">The mediaInfo<see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject"/>.</param>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.MediaData.ResetPlayback">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.MediaData.ResetPlayback">
             <summary>
             Gets a value indicating whether the playback position should be changed.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.MediaData.Url">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.MediaData.Url">
             <summary>
             Gets a value indicating the url that should be loaded.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.MediaData.Metadata">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.MediaData.Metadata">
             <summary>
             Gets the metadata that is to be sent to the device.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.MediaData.Headers">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.MediaData.Headers">
             <summary>
             Gets the additional headers that should be sent to the device.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Main.PlayToDevice.MediaData.MediaType">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Main.PlayToDevice.MediaData.MediaType">
             <summary>
             Gets the media type of the url.
             </summary>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Model.PlaylistItem">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Model.PlaylistItem">
             <summary>
-            Defines the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.PlaylistItem" />.
+            Defines the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.PlaylistItem" />.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Model.PlaylistItem.#ctor(MediaBrowser.Model.Dlna.StreamInfo,MediaBrowser.Model.Dlna.DeviceProfile)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Model.PlaylistItem.#ctor(MediaBrowser.Model.Dlna.StreamInfo,MediaBrowser.Model.Dlna.DeviceProfile)">
             <summary>
-            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.PlaylistItem"/> class.
+            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.PlaylistItem"/> class.
             </summary>
-            <param name="streamInfo">The <see cref="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlaylistItem.StreamInfo"/>.</param>
+            <param name="streamInfo">The <see cref="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlaylistItem.StreamInfo"/>.</param>
             <param name="profile">The <see cref="T:MediaBrowser.Model.Dlna.DeviceProfile"/>.</param>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlaylistItem.StreamUrl">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlaylistItem.StreamUrl">
             <summary>
             Gets or sets the stream's Url.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlaylistItem.Didl">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlaylistItem.Didl">
             <summary>
             Gets or sets the Didl xml.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlaylistItem.StreamInfo">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlaylistItem.StreamInfo">
             <summary>
             Gets the stream information.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlaylistItem.Profile">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlaylistItem.Profile">
             <summary>
             Gets the device profile.
             </summary>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Model.PlaylistItemFactory">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Model.PlaylistItemFactory">
             <summary>
-            Defines the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.PlaylistItemFactory" />.
+            Defines the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.PlaylistItemFactory" />.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Model.PlaylistItemFactory.Create(MediaBrowser.Controller.Entities.Photo,MediaBrowser.Model.Dlna.DeviceProfile)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Model.PlaylistItemFactory.Create(MediaBrowser.Controller.Entities.Photo,MediaBrowser.Model.Dlna.DeviceProfile)">
             <summary>
             The Create.
             </summary>
             <param name="item">The item<see cref="T:MediaBrowser.Controller.Entities.Photo"/>.</param>
             <param name="profile">The profile<see cref="T:MediaBrowser.Model.Dlna.DeviceProfile"/>.</param>
-            <returns>The <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.PlaylistItem"/>.</returns>
+            <returns>The <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.PlaylistItem"/>.</returns>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo">
             <summary>
-            Defines the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo" />.
+            Defines the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo" />.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.#ctor(System.String,System.String,System.String)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.#ctor(System.String,System.String,System.String)">
             <summary>
-            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo"/> class.
+            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo"/> class.
             </summary>
             <param name="name">Name of the device.</param>
             <param name="baseUrl">Base url of the device.</param>
             <param name="uuid">Uuid of the device.</param>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.Uuid">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.Uuid">
             <summary>
             Gets or sets the Uuid.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.Name">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.Name">
             <summary>
             Gets or sets the Name.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.ModelName">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.ModelName">
             <summary>
             Gets or sets the Model Name.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.ModelNumber">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.ModelNumber">
             <summary>
             Gets or sets the Model Number.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.ModelDescription">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.ModelDescription">
             <summary>
             Gets or sets the Model Description.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.ModelUrl">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.ModelUrl">
             <summary>
             Gets or sets the Model Url.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.Manufacturer">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.Manufacturer">
             <summary>
             Gets or sets the Manufacturer.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.SerialNumber">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.SerialNumber">
             <summary>
             Gets or sets the Serial Number.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.ManufacturerUrl">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.ManufacturerUrl">
             <summary>
             Gets or sets the Manufacturer Url.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.BaseUrl">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.BaseUrl">
             <summary>
             Gets or sets the Base Url.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.Services">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.Services">
             <summary>
             Gets the services the device supports.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.RenderControl">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.RenderControl">
             <summary>
             Gets the Render Control service.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.ConnectionManager">
-            <summary>
-            Gets the Connection Manager service.
-            </summary>
-        </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.AVTransport">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.AvTransport">
             <summary>
             Gets the AVTransport service.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.Capabilities">
-            <summary>
-            Gets or sets the capabilities of the device.
-            </summary>
-        </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo.ToDeviceIdentification">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo.ToDeviceIdentification">
             <summary>
             Converts this item to a <see cref="T:MediaBrowser.Model.Dlna.DeviceIdentification"/>.
             </summary>
             <returns>The <see cref="T:MediaBrowser.Model.Dlna.DeviceIdentification"/>.</returns>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Model.TransportCommands">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportCommands">
             <summary>
-            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.TransportCommands"/> class.
+            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportCommands"/> class.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.TransportCommands.StateVariables">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportCommands.StateVariables">
             <summary>
             Gets the state variables.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.TransportCommands.ServiceActions">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportCommands.ServiceActions">
             <summary>
             Gets the service actions.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Model.TransportCommands.Create(System.Xml.Linq.XElement,Microsoft.Extensions.Logging.ILogger)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportCommands.Create(System.Xml.Linq.XElement,Microsoft.Extensions.Logging.ILogger)">
             <summary>
             Creates a transport command.
             </summary>
             <param name="document">The <see cref="T:System.Xml.Linq.XDocument"/> instance.</param>
             <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger"/> instance.</param>
-            <returns>A <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.TransportCommands"/>.</returns>
+            <returns>A <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportCommands"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Model.TransportCommands.BuildPost(Jellyfin.Plugin.Ssdp.Model.ServiceAction,System.String)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportCommands.BuildPost(Jellyfin.Plugin.Dlna.Model.ServiceAction,System.String)">
             <summary>
             Builds a html post command.
             </summary>
-            <param name="action">The <see cref="T:Jellyfin.Plugin.Ssdp.Model.ServiceAction"/> to use.</param>
+            <param name="action">The <see cref="T:Jellyfin.Plugin.Dlna.Model.ServiceAction"/> to use.</param>
             <param name="xmlNamespace">Namespace to use.</param>
             <returns>A string containing the post data.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Model.TransportCommands.BuildPost(Jellyfin.Plugin.Ssdp.Model.ServiceAction,System.String,System.Object,System.String)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportCommands.BuildPost(Jellyfin.Plugin.Dlna.Model.ServiceAction,System.String,System.Object,System.String)">
             <summary>
             Builds a html post.
             </summary>
-            <param name="action">The <see cref="T:Jellyfin.Plugin.Ssdp.Model.ServiceAction"/> to use.</param>
+            <param name="action">The <see cref="T:Jellyfin.Plugin.Dlna.Model.ServiceAction"/> to use.</param>
             <param name="xmlNamespace">Namespace to use.</param>
             <param name="value">Value to use as a parameter.</param>
             <param name="commandParameter">Value to use for the service parameters.</param>
             <returns>A string containing the post data.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Model.TransportCommands.BuildPost(Jellyfin.Plugin.Ssdp.Model.ServiceAction,System.String,System.Object,System.Collections.Generic.Dictionary{System.String,System.String})">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportCommands.BuildPost(Jellyfin.Plugin.Dlna.Model.ServiceAction,System.String,System.Object,System.Collections.Generic.Dictionary{System.String,System.String})">
             <summary>
             Builds a html post.
             </summary>
-            <param name="action">The <see cref="T:Jellyfin.Plugin.Ssdp.Model.ServiceAction"/> to use.</param>
+            <param name="action">The <see cref="T:Jellyfin.Plugin.Dlna.Model.ServiceAction"/> to use.</param>
             <param name="xmlNamespace">Namespace to use.</param>
             <param name="value">Value to use when parameter isn't included in the <paramref name="dictionary"/>.</param>
             <param name="dictionary"><see cref="T:System.Collections.Generic.Dictionary`2"/> of named parameters.</param>
             <returns>A string containing the post data.</returns>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Model.TransportState">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportState">
              <summary>
              Lists the transport states of the dlna player as defined by the standard.
             
              DO NOT CHANGE THESE VALUES OR REMOVE THE UNDERSCORES AS NAMES MUST MATCH THE STANDARD.
              </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Model.TransportState.Stopped">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportState.Stopped">
             <summary>
             Transport state is stopped.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Model.TransportState.Playing">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportState.Playing">
             <summary>
             Transport state is playing.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Model.TransportState.Transitioning">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportState.Transitioning">
             <summary>
             Transport state is transitioning.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Model.TransportState.Paused_Playback">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportState.Paused_Playback">
             <summary>
             Transport state is paused playback.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Model.TransportState.Paused_Recording">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportState.Paused_Recording">
             <summary>
             Transport state is paused recording - Not used.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Model.TransportState.Recording">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportState.Recording">
             <summary>
             Transport state is recoding -  Not used.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Model.TransportState.No_Media_Present">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportState.No_Media_Present">
             <summary>
             Transport state is none. No media present.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Model.TransportState.Paused">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportState.Paused">
             <summary>
             Transport state is stopped.
             </summary>
         </member>
-        <member name="F:Jellyfin.Plugin.DlnaPlayTo.Model.TransportState.Error">
+        <member name="F:Jellyfin.Plugin.Dlna.PlayTo.Model.TransportState.Error">
             <summary>
             Transport state is error.
             </summary>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject">
             <summary>
-            Defines the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject" />.
+            Defines the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject" />.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject.Id">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject.Id">
             <summary>
             Gets or sets the Id.
             </summary>
         </member>
-        <member name="P:Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject.Url">
+        <member name="P:Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject.Url">
             <summary>
             Gets or sets the Url.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject.Equals(Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject.Equals(Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject)">
             <summary>
             The Equals Method.
             </summary>
-            <param name="other">The <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.UBaseObject"/>.</param>
+            <param name="other">The <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.UBaseObject"/>.</param>
             <returns>True if this object matches <paramref name="other"/>.</returns>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Model.XElementExtensions">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Model.XElementExtensions">
             <summary>
-            Defines the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.XElementExtensions" />.
+            Defines the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.XElementExtensions" />.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Model.XElementExtensions.GetValue(System.Xml.Linq.XElement,System.Xml.Linq.XName)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Model.XElementExtensions.GetValue(System.Xml.Linq.XElement,System.Xml.Linq.XName)">
             <summary>
             The GetValue.
             </summary>
@@ -1271,7 +1252,7 @@
             <param name="name">The <see cref="T:System.Xml.Linq.XName"/>.</param>
             <returns>The <see cref="T:System.String"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Model.XElementExtensions.GetDescendantValue(System.Xml.Linq.XElement,System.Xml.Linq.XName)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Model.XElementExtensions.GetDescendantValue(System.Xml.Linq.XElement,System.Xml.Linq.XName)">
             <summary>
             Retrieves the descendants value.
             </summary>
@@ -1279,45 +1260,48 @@
             <param name="name">The <see cref="T:System.Xml.Linq.XName"/>.</param>
             <returns>The <see cref="T:System.String"/>.</returns>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Profile.ProfileManager">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Profile.ProfileManager">
             <summary>
-            Defines the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Profile.ProfileManager" />.
+            Defines the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Profile.ProfileManager" />.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Profile.ProfileManager.#ctor(Microsoft.Extensions.Logging.ILogger{Jellyfin.Plugin.DlnaPlayTo.Profile.ProfileManager},Jellyfin.Plugin.Ssdp.Profiles.IDlnaProfileManager)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Profile.ProfileManager.#ctor(Microsoft.Extensions.Logging.ILogger{Jellyfin.Plugin.Dlna.PlayTo.Profile.ProfileManager},Jellyfin.Plugin.Dlna.Profiles.IDlnaProfileManager)">
             <summary>
-            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Profile.ProfileManager"/> class.
+            Initializes a new instance of the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Profile.ProfileManager"/> class.
             </summary>
             <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger`1"/>.</param>
-            <param name="dlnaProfileManager">The <see cref="T:Jellyfin.Plugin.Ssdp.Profiles.IDlnaProfileManager"/>.</param>
+            <param name="dlnaProfileManager">The <see cref="T:Jellyfin.Plugin.Dlna.Profiles.IDlnaProfileManager"/>.</param>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Profile.ProfileManager.GetDefaultProfile(Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Profile.ProfileManager.GetDefaultProfile(Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo,System.String)">
             <summary>
             Gets the Default Profile.
             </summary>
-            <param name="playToDeviceInfo">The <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo"/>.</param>
+            <param name="playToDeviceInfo">The <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo"/>.</param>
+            <param name="capabilities">Contains the dlna capabilities of the device.</param>
             <returns>The <see cref="T:MediaBrowser.Model.Dlna.DeviceProfile"/>.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Profile.ProfileManager.GetProfile(Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Profile.ProfileManager.GetProfile(Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo,System.String)">
             <summary>
             Gets the profile.
             </summary>
             <param name="deviceId">The device information.</param>
+            <param name="capabilities">Contains the dlna capabilities of the device.</param>
             <returns>DeviceProfile.</returns>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Profile.ProfileManager.AutoCreateProfile(Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Profile.ProfileManager.AutoCreateProfile(Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo,System.String)">
             <summary>
             Auto create a profile for <paramref name="deviceInfo"/>.
             </summary>
-            <param name="deviceInfo">The <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Model.PlayToDeviceInfo"/>.</param>
+            <param name="deviceInfo">The <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Model.PlayToDeviceInfo"/>.</param>
+            <param name="capabilities">Contains the dlna capabilities of the device.</param>
             <returns>The <see cref="T:MediaBrowser.Model.Dlna.DeviceProfile"/>.</returns>
         </member>
-        <member name="T:Jellyfin.Plugin.DlnaPlayTo.Registrator.PlayToRegistrator">
+        <member name="T:Jellyfin.Plugin.Dlna.PlayTo.Registrator.PlayToRegistrator">
             <summary>
-            Defines the <see cref="T:Jellyfin.Plugin.DlnaPlayTo.Registrator.PlayToRegistrator" />.
+            Defines the <see cref="T:Jellyfin.Plugin.Dlna.PlayTo.Registrator.PlayToRegistrator" />.
             </summary>
         </member>
-        <member name="M:Jellyfin.Plugin.DlnaPlayTo.Registrator.PlayToRegistrator.RegisterServices(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+        <member name="M:Jellyfin.Plugin.Dlna.PlayTo.Registrator.PlayToRegistrator.RegisterServices(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
             <summary>
             Register the classes with DI.
             </summary>

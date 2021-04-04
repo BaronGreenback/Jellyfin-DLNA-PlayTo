@@ -5,16 +5,15 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Emby.Dlna;
 using Jellyfin.Api.Helpers;
 using Jellyfin.Networking.Configuration;
-using Jellyfin.Plugin.DlnaPlayTo.Configuration;
-using Jellyfin.Plugin.DlnaPlayTo.Main;
-using Jellyfin.Plugin.DlnaPlayTo.Profile;
-using Jellyfin.Plugin.Ssdp;
-using Jellyfin.Plugin.Ssdp.EventArgs;
-using Jellyfin.Plugin.Ssdp.Helpers;
-using Jellyfin.Plugin.Ssdp.Profiles;
+using Jellyfin.Plugin.Dlna.EventArgs;
+using Jellyfin.Plugin.Dlna.Helpers;
+using Jellyfin.Plugin.Dlna.Model;
+using Jellyfin.Plugin.Dlna.PlayTo.Configuration;
+using Jellyfin.Plugin.Dlna.PlayTo.Main;
+using Jellyfin.Plugin.Dlna.Profiles;
+using Jellyfin.Plugin.Dlna.Ssdp;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Common.Plugins;
@@ -32,14 +31,13 @@ using MediaBrowser.Model.Serialization;
 using MediaBrowser.Model.Session;
 using Microsoft.Extensions.Logging;
 
-namespace Jellyfin.Plugin.DlnaPlayTo
+namespace Jellyfin.Plugin.Dlna.PlayTo
 {
     /// <summary>
     /// Defines the <see cref="DlnaPlayTo" />.
     /// </summary>
     public class DlnaPlayTo : BasePlugin<PlayToConfiguration>, IHasWebPages, IDisposable
     {
-        private readonly ProfileManager _profileManager;
         private readonly ILogger _logger;
         private readonly ISessionManager _sessionManager;
         private readonly ILibraryManager _libraryManager;
@@ -104,12 +102,6 @@ namespace Jellyfin.Plugin.DlnaPlayTo
             StreamingHelpers.AddDlnaHeadersFunc = DlnaStreamHelper.AddDlnaHeaders;
 
             Instance = this;
-            if (networkManager == null)
-            {
-                throw new NullReferenceException(nameof(networkManager));
-            }
-
-            _profileManager = new ProfileManager(loggerFactory.CreateLogger<ProfileManager>(), dlnaProfileManager);
             _logger = loggerFactory.CreateLogger<DlnaPlayTo>();
             _sessionManager = sessionManager;
             _libraryManager = libraryManager;
@@ -133,7 +125,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo
 
             _locator.DeviceDiscovered += OnDeviceDiscoveryDeviceDiscovered;
 
-            Configuration.SetConfigurationManager(configurationManager);
+            Configuration.SetConfigurationManager(configurationManager, UpdateConfiguration);
             ConfigurationChanged = UpdateConfiguration;
 
             _locator.Start();
@@ -226,6 +218,8 @@ namespace Jellyfin.Plugin.DlnaPlayTo
                 if (disposing)
                 {
                     _logger.LogDebug("Disposing instance.");
+
+                    Configuration.SetConfigurationManager(null, UpdateConfiguration);
 
                     _locator.DeviceDiscovered -= OnDeviceDiscoveryDeviceDiscovered;
                     _locator.Dispose();
@@ -338,7 +332,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo
                 "DLNA PlayTo",
                 _appHost.ApplicationVersionString,
                 info.Usn,
-                deviceProperties.Name ?? info.Location.OriginalString,
+                deviceProperties.Name,
                 info.Endpoint.Address.ToString(),
                 null);
             var controller = sessionInfo.SessionControllers.OfType<PlayToController>().FirstOrDefault();
@@ -350,7 +344,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo
 
             string serverAddress = _appHost.GetSmartApiUrl(info.Endpoint.Address);
 
-            var device = await PlayToDevice.CreateDevice(deviceProperties, _httpClientFactory, _logger, serverAddress, _profileManager).ConfigureAwait(false);
+            var device = await PlayToDevice.CreateDevice(deviceProperties, _httpClientFactory, _logger, serverAddress).ConfigureAwait(false);
             _devices.Add(device);
 
 #pragma warning disable CA2000 // Dispose objects before losing scope
@@ -400,52 +394,44 @@ namespace Jellyfin.Plugin.DlnaPlayTo
 
         private void UpdateConfiguration(object? sender, BasePluginConfiguration configuration)
         {
-            if (configuration == null)
-            {
-                throw new ArgumentNullException(nameof(configuration));
-            }
-
             var config = (PlayToConfiguration)configuration;
             PlayToDevice.CtsTimeout = config.CommunicationTimeout;
             PlayToDevice.FriendlyName = config.FriendlyName;
             PlayToDevice.QueueInterval = config.QueueInterval;
             PlayToDevice.TimerInterval = config.TimerInterval;
             PlayToDevice.UserAgent = config.UserAgent;
-            if (_locator != null)
+            // Tracing may be set elsewhere, so we want to implement a last change wins.
+            string settings = GetSettings();
+            if (_previousSettings != settings)
             {
-                // Tracing may be set elsewhere, so we want to implement a last change wins.
-                string settings = GetSettings();
-                if (_previousSettings != settings)
+                config.SsdpTracingFilter = IPAddress.TryParse(config.SsdpTracingFilter, out var addr) ? addr.ToString() : string.Empty;
+                _locator.Server.UdpPortRange = config.UdpPortRange;
+                _locator.Server.SetTracingFilter(config.EnableSsdpTracing, config.SsdpTracingFilter);
+                if (config.EnableSsdpTracing)
                 {
-                    config.SsdpTracingFilter = IPAddress.TryParse(config.SsdpTracingFilter, out var addr) ? addr.ToString() : string.Empty;
-                    _locator.Server.UdpPortRange = config.UdpPortRange;
-                    _locator.Server.SetTracingFilter(config.EnableSsdpTracing, config.SsdpTracingFilter);
-                    if (config.EnableSsdpTracing)
-                    {
-                        _logger.LogDebug("Setting SSDP tracing to : {Filter}", config.SsdpTracingFilter);
-                    }
-                    else
-                    {
-                        _logger.LogDebug("SSDP Logging disabled.");
-                    }
-
-                    _locator.Server.SaveConfiguration();
-                    _previousSettings = settings;
+                    _logger.LogDebug("Setting SSDP tracing to : {Filter}", config.SsdpTracingFilter);
+                }
+                else
+                {
+                    _logger.LogDebug("SSDP Logging disabled.");
                 }
 
-                if (config.ClientDiscoveryIntervalSeconds <= 0)
-                {
-                    config.ClientDiscoveryIntervalSeconds = 15;
-                }
-
-                if (config.ClientNotificationInterval <= 0)
-                {
-                    config.ClientNotificationInterval = 1800;
-                }
-
-                _locator.Interval = config.ClientNotificationInterval;
-                _locator.InitialInterval = config.ClientDiscoveryIntervalSeconds;
+                _locator.Server.SaveConfiguration();
+                _previousSettings = settings;
             }
+
+            if (config.ClientDiscoveryIntervalSeconds <= 0)
+            {
+                config.ClientDiscoveryIntervalSeconds = 15;
+            }
+
+            if (config.ClientNotificationInterval <= 0)
+            {
+                config.ClientNotificationInterval = 1800;
+            }
+
+            _locator.Interval = config.ClientNotificationInterval;
+            _locator.InitialInterval = config.ClientDiscoveryIntervalSeconds;
         }
 
         private string GetSettings()

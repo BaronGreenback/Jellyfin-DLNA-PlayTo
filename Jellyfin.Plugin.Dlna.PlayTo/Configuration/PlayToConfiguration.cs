@@ -1,21 +1,18 @@
+using System;
 using System.Text.Json.Serialization;
-using Jellyfin.Plugin.Ssdp.Configuration;
+using Jellyfin.Plugin.Dlna.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Model.Plugins;
 
-namespace Jellyfin.Plugin.DlnaPlayTo.Configuration
+namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
 {
     /// <summary>
     /// Defines the <see cref="PlayToConfiguration" />.
     /// </summary>
     public class PlayToConfiguration : BasePluginConfiguration
     {
+        private EventHandler<BasePluginConfiguration>? _handler;
         private IConfigurationManager? _config;
-
-        /// <summary>
-        /// Gets or sets the maximum wait time for http responses from devices (ms).
-        /// </summary>
-        public static int CtsTimeout { get; set; } = 10000;
 
         /// <summary>
         /// Gets or sets a value indicating whether detailed playTo debug logs are sent to the console/log.
@@ -33,11 +30,6 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Configuration
         /// Gets or sets the continuous ssdp client discovery interval time (in seconds).
         /// </summary>
         public int ClientNotificationInterval { get; set; } = 1800;
-
-        /// <summary>
-        /// Gets or sets a value indicating whether disk profiles should be created for devices that are unknown.
-        /// </summary>
-        public bool AutoCreatePlayToProfiles { get; set; }
 
         /// <summary>
         /// Gets or sets the amount of time given for the device to respond in ms.
@@ -138,9 +130,33 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Configuration
         /// Defines the configuration manager to use.
         /// </summary>
         /// <param name="config">The <see cref="IConfigurationManager"/> instance.</param>
-        internal void SetConfigurationManager(IConfigurationManager config)
+        /// <param name="handler">The event handler to fire on change.</param>
+        internal void SetConfigurationManager(IConfigurationManager? config, EventHandler<BasePluginConfiguration> handler)
         {
             _config = config;
+            _handler = handler;
+            if (config == null)
+            {
+                if (_config != null)
+                {
+                    _config.NamedConfigurationUpdated -= OnNamedChanged;
+                }
+            }
+            else
+            {
+                config.NamedConfigurationUpdated += OnNamedChanged;
+            }
+
+            _config = config;
+        }
+
+        internal void OnNamedChanged(object? sender, ConfigurationUpdateEventArgs args)
+        {
+            // Simulate on changed for ssdp changes.
+            if (string.Equals(args.Key, "ssdp", StringComparison.OrdinalIgnoreCase))
+            {
+                _handler?.Invoke(this, this);
+            }
         }
     }
 }

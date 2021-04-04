@@ -41,26 +41,32 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Jellyfin.Plugin.Ssdp\Jellyfin.Plugin.Ssdp\Jellyfin.Plugin.Ssdp.csproj" />
-		<ProjectReference Include="..\..\jellyfin\Jellyfin.Api\Jellyfin.Api.csproj" />
+    <ProjectReference Include="..\..\Jellyfin.Plugin.Dlna\Jellyfin.Plugin.Dlna\Jellyfin.Plugin.Dlna.csproj" />
+    <ProjectReference Include="..\..\jellyfin\Jellyfin.Api\Jellyfin.Api.csproj" />
 		<ProjectReference Include="..\..\jellyfin\Jellyfin.Data\Jellyfin.Data.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Folder Include="Api\Controller\" />
 	  <Folder Include="Registrator\" />
 	</ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>DEBUG</DefineConstants>
     <WarningLevel>2</WarningLevel>
-    <DocumentationFile>F:\Code\Jellyfin.Plugin.DlnaPlayTo\Jellyfin.Plugin.DlnaPlayTo\Jellyfin.Plugin.DlnaPlayTo.xml</DocumentationFile>
+    <DocumentationFile></DocumentationFile>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
   </PropertyGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="del C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\*.* /q&#xD;&#xA;copy $(OutDir)\$(TargetFileName) C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\&#xD;&#xA;copy F:\Code\Jellyfin.Plugin.SSDP\Jellyfin.Plugin.SSDP\bin\Debug\net5.0\Jellyfin.Plugin.SSDP.dll C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\" />
+    <Exec Command="del C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\*.* /q&#xD;&#xA;copy $(OutDir)\$(TargetFileName) C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\&#xD;&#xA;copy F:\Code\Jellyfin.Plugin.Dlna\Jellyfin.Plugin.Dlna\bin\Debug\net5.0\Jellyfin.Plugin.Dlna.dll C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\" />
   </Target>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <CodeAnalysisRuleSet>../jellyfin.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
   </PropertyGroup>
 </Project>

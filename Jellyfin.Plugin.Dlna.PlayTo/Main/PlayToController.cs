@@ -6,20 +6,18 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Data.Entities;
-using Jellyfin.Plugin.DlnaPlayTo.EventArgs;
-using Jellyfin.Plugin.DlnaPlayTo.Model;
-using Jellyfin.Plugin.DlnaPlayTo.Profile;
-using Jellyfin.Plugin.Ssdp;
-using Jellyfin.Plugin.Ssdp.Culture;
-using Jellyfin.Plugin.Ssdp.Didl;
-using Jellyfin.Plugin.Ssdp.Model;
+using Jellyfin.Plugin.Dlna.Culture;
+using Jellyfin.Plugin.Dlna.Didl;
+using Jellyfin.Plugin.Dlna.Model;
+using Jellyfin.Plugin.Dlna.PlayTo.EventArgs;
+using Jellyfin.Plugin.Dlna.PlayTo.Model;
+using Jellyfin.Plugin.Dlna.Ssdp;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Drawing;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Controller.Session;
-using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Globalization;
@@ -28,7 +26,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using Photo = MediaBrowser.Controller.Entities.Photo;
 
-namespace Jellyfin.Plugin.DlnaPlayTo.Main
+namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 {
     /// <summary>
     /// Defines the <see cref="PlayToController" />.
@@ -258,8 +256,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
             usn ??= string.Empty;
             nt ??= string.Empty;
 
-            if (_device.Properties.Uuid != null
-                && usn.Contains(_device.Properties.Uuid, StringComparison.OrdinalIgnoreCase)
+            if (usn.Contains(_device.Properties.Uuid, StringComparison.OrdinalIgnoreCase)
                 && (usn.Contains("MediaRenderer:", StringComparison.OrdinalIgnoreCase) || nt.Contains("MediaRenderer:", StringComparison.OrdinalIgnoreCase)))
             {
                 OnDeviceUnavailable();
@@ -327,7 +324,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                     _device.Duration?.Ticks :
                     mediaSource.RunTimeTicks;
 
-                var playedToCompletion = positionTicks.HasValue && positionTicks.Value == 0;
+                var playedToCompletion = positionTicks == 0;
 
                 if (!playedToCompletion && duration.HasValue && positionTicks.HasValue)
                 {
@@ -454,7 +451,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
 
         private PlaybackStartInfo GetProgressInfo(StreamParams info)
         {
-            return new PlaybackStartInfo
+            return new()
             {
                 ItemId = info.ItemId,
                 SessionId = _session.Id,
@@ -479,7 +476,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
         /// </summary>
         private void ShufflePlaylist()
         {
-            using RNGCryptoServiceProvider provider = new RNGCryptoServiceProvider();
+            using var provider = new RNGCryptoServiceProvider();
             int n = _playlist.Count;
             while (n > 1)
             {
@@ -715,7 +712,7 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                 _mediaEncoder,
                 _libraryManager,
                 (48, 48))
-                .GetItemDidl(item, user, null, _session.DeviceId, new Filter(), playlistItem.StreamInfo);
+                .GetItemDidl(item, user, null, _session.DeviceId, FilterHelper.Filter(), playlistItem.StreamInfo);
 
             playlistItem.Didl = itemXml;
 
@@ -992,55 +989,55 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
             /// Initializes a new instance of the <see cref="StreamParams"/> class.
             /// </summary>
             /// <param name="itemId">The <see cref="Guid"/>.</param>
-            public StreamParams(Guid itemId)
+            private StreamParams(Guid itemId)
             {
                 ItemId = itemId;
             }
 
             /// <summary>
-            /// Gets or sets the media source manager.
+            /// Gets the ItemId.
             /// </summary>
-            public IMediaSourceManager? MediaSourceManager { get; set; }
+            public Guid ItemId { get; private set; }
 
             /// <summary>
-            /// Gets or sets the ItemId.
+            /// Gets a value indicating whether IsDirectStream.
             /// </summary>
-            public Guid ItemId { get; set; }
+            public bool IsDirectStream { get; private set; }
 
             /// <summary>
-            /// Gets or sets a value indicating whether IsDirectStream.
+            /// Gets the StartPositionTicks.
             /// </summary>
-            public bool IsDirectStream { get; set; }
+            public long StartPositionTicks { get; private set; }
 
             /// <summary>
-            /// Gets or sets the StartPositionTicks.
+            /// Gets the AudioStreamIndex.
             /// </summary>
-            public long StartPositionTicks { get; set; }
+            public int? AudioStreamIndex { get; private set; }
 
             /// <summary>
-            /// Gets or sets the AudioStreamIndex.
+            /// Gets the SubtitleStreamIndex.
             /// </summary>
-            public int? AudioStreamIndex { get; set; }
+            public int? SubtitleStreamIndex { get; private set; }
 
             /// <summary>
-            /// Gets or sets the SubtitleStreamIndex.
+            /// Gets the MediaSourceId.
             /// </summary>
-            public int? SubtitleStreamIndex { get; set; }
+            public string? MediaSourceId { get; private set; }
 
             /// <summary>
-            /// Gets or sets the MediaSourceId.
+            /// Gets the Item.
             /// </summary>
-            public string? MediaSourceId { get; set; }
+            public BaseItem? Item { get; private set; }
 
             /// <summary>
             /// Gets or sets the LiveStreamId.
             /// </summary>
-            public string? LiveStreamId { get; set; }
+            private string? LiveStreamId { get; set; }
 
             /// <summary>
-            /// Gets or sets the Item.
+            /// Gets or sets the media source manager.
             /// </summary>
-            public BaseItem? Item { get; set; }
+            private IMediaSourceManager? MediaSourceManager { get; set; }
 
             /// <summary>
             /// Parses a stream from a url.
@@ -1086,11 +1083,36 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
             }
 
             /// <summary>
+            /// Gets the media source.
+            /// </summary>
+            /// <param name="cancellationToken">A <see cref="CancellationToken"/>.</param>
+            /// <returns>A <see cref="Task{MediaSourceInfo}"/> or null.</returns>
+            public async Task<MediaSourceInfo?> GetMediaSource(CancellationToken cancellationToken)
+            {
+                if (_mediaSource != null)
+                {
+                    return _mediaSource;
+                }
+
+                if (Item is not IHasMediaSources)
+                {
+                    return null;
+                }
+
+                if (MediaSourceManager != null)
+                {
+                    _mediaSource = await MediaSourceManager.GetMediaSource(Item, MediaSourceId, LiveStreamId, false, cancellationToken).ConfigureAwait(false);
+                }
+
+                return _mediaSource;
+            }
+
+            /// <summary>
             /// Extracts the guid from the url.
             /// </summary>
             /// <param name="url">Url to parse.</param>
             /// <returns>A <see cref="Guid"/>, or Guid.Empty if not found.</returns>
-            public static Guid GetItemId(string? url)
+            private static Guid GetItemId(string? url)
             {
                 if (string.IsNullOrEmpty(url))
                 {
@@ -1116,31 +1138,6 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Main
                 }
 
                 return Guid.Empty;
-            }
-
-            /// <summary>
-            /// Gets the media source.
-            /// </summary>
-            /// <param name="cancellationToken">A <see cref="CancellationToken"/>.</param>
-            /// <returns>A <see cref="Task{MediaSourceInfo}"/> or null.</returns>
-            public async Task<MediaSourceInfo?> GetMediaSource(CancellationToken cancellationToken)
-            {
-                if (_mediaSource != null)
-                {
-                    return _mediaSource;
-                }
-
-                if (Item is not IHasMediaSources)
-                {
-                    return null;
-                }
-
-                if (MediaSourceManager != null)
-                {
-                    _mediaSource = await MediaSourceManager.GetMediaSource(Item, MediaSourceId, LiveStreamId, false, cancellationToken).ConfigureAwait(false);
-                }
-
-                return _mediaSource;
             }
         }
     }

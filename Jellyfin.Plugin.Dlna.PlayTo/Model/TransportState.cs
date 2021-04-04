@@ -1,4 +1,4 @@
-namespace Jellyfin.Plugin.DlnaPlayTo.Model
+namespace Jellyfin.Plugin.Dlna.PlayTo.Model
 {
     /// <summary>
     /// Lists the transport states of the dlna player as defined by the standard.

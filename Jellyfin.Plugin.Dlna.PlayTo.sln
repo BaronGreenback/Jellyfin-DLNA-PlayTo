@@ -2,9 +2,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30717.126
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Jellyfin.Plugin.DlnaPlayTo", "Jellyfin.Plugin.DlnaPlayTo\Jellyfin.Plugin.DlnaPlayTo.csproj", "{D921B930-CF91-406F-ACBC-08914DCD0D34}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Jellyfin.Plugin.Dlna.PlayTo", "Jellyfin.Plugin.Dlna.PlayTo\Jellyfin.Plugin.Dlna.PlayTo.csproj", "{D921B930-CF91-406F-ACBC-08914DCD0D34}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Jellyfin.Plugin.SSDP", "..\Jellyfin.Plugin.SSDP\Jellyfin.Plugin.SSDP\Jellyfin.Plugin.SSDP.csproj", "{C7A695DC-6E42-4087-85EA-59D27FD5F634}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Jellyfin.Plugin.Dlna", "..\Jellyfin.Plugin.Dlna\Jellyfin.Plugin.Dlna\Jellyfin.Plugin.Dlna.csproj", "{C7A695DC-6E42-4087-85EA-59D27FD5F634}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

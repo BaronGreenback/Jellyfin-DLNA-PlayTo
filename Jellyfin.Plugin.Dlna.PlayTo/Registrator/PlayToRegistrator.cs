@@ -1,10 +1,9 @@
-using Jellyfin.Plugin.DlnaPlayTo.Main;
-using Jellyfin.Plugin.DlnaPlayTo.Profile;
+using Jellyfin.Plugin.Dlna.PlayTo.Main;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Controller.Session;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Jellyfin.Plugin.DlnaPlayTo.Registrator
+namespace Jellyfin.Plugin.Dlna.PlayTo.Registrator
 {
     /// <summary>
     /// Defines the <see cref="PlayToRegistrator" />.
@@ -17,7 +16,6 @@ namespace Jellyfin.Plugin.DlnaPlayTo.Registrator
         /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
         public void RegisterServices(IServiceCollection serviceCollection)
         {
-            serviceCollection.AddSingleton<ProfileManager>();
             serviceCollection.AddSingleton<ISessionController, PlayToController>();
         }
     }
