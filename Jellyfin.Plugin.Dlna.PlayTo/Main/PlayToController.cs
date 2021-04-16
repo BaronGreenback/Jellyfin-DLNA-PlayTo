@@ -18,6 +18,7 @@ using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Controller.Session;
+using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Globalization;
@@ -180,7 +181,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             switch (streamInfo.MediaType)
             {
                 case DlnaProfileType.Audio:
-                    return ContentFeatureBuilder.BuildAudioHeader(
+                    return Jellyfin.Plugin.Dlna.Model.ContentFeatureBuilder.BuildAudioHeader(
                         profile,
                         streamInfo.Container,
                         streamInfo.TargetAudioCodec[0],
@@ -194,7 +195,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                 case DlnaProfileType.Video:
                     {
-                        var list = ContentFeatureBuilder.BuildVideoHeader(
+                        var list = Jellyfin.Plugin.Dlna.Model.ContentFeatureBuilder.BuildVideoHeader(
                             profile,
                             streamInfo.Container,
                             streamInfo.TargetVideoCodec[0],
@@ -256,7 +257,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             usn ??= string.Empty;
             nt ??= string.Empty;
 
-            if (usn.Contains(_device.Properties.Uuid, StringComparison.OrdinalIgnoreCase)
+            if (usn.Contains(_device.Uuid, StringComparison.OrdinalIgnoreCase)
                 && (usn.Contains("MediaRenderer:", StringComparison.OrdinalIgnoreCase) || nt.Contains("MediaRenderer:", StringComparison.OrdinalIgnoreCase)))
             {
                 OnDeviceUnavailable();
@@ -537,6 +538,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     _playlist.AddRange(playlist);
                     _currentPlaylistIndex = playlist.Length > 0 ? 0 : -1;
                     break;
+
                 case PlayCommand.PlayInstantMix:
                 case PlayCommand.PlayShuffle:
                     _logger.LogDebug("{Name} - Shuffling playlist.", _session.DeviceName);
@@ -544,6 +546,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     // Will restart playback on a random item.
                     ShufflePlaylist();
                     break;
+
                 case PlayCommand.PlayLast:
                     {
                         // Add to the end of the list.
@@ -997,7 +1000,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             /// <summary>
             /// Gets the ItemId.
             /// </summary>
-            public Guid ItemId { get; private set; }
+            public Guid ItemId { get; }
 
             /// <summary>
             /// Gets a value indicating whether IsDirectStream.

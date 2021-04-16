@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using MediaBrowser.Controller.Entities;
+using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Session;
 
 namespace Jellyfin.Plugin.Dlna.PlayTo.Model

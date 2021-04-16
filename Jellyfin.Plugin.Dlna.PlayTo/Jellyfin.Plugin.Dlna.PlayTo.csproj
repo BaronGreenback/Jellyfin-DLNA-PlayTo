@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
-    <RootNamespace>Jellyfin.Plugin.DlnaPlayTo</RootNamespace>
+    <RootNamespace>Jellyfin.Plugin.Dlna.PlayTo</RootNamespace>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
     <nullable>enable</nullable>
@@ -47,7 +47,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Api\Controller\" />
 	  <Folder Include="Registrator\" />
 	</ItemGroup>
 
@@ -59,7 +58,7 @@
   </PropertyGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="del C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\*.* /q&#xD;&#xA;copy $(OutDir)\$(TargetFileName) C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\&#xD;&#xA;copy F:\Code\Jellyfin.Plugin.Dlna\Jellyfin.Plugin.Dlna\bin\Debug\net5.0\Jellyfin.Plugin.Dlna.dll C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\" />
+    <Exec Command="del C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\*.* /q&#xD;&#xA;copy $(OutDir)\$(TargetFileName) C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\&#xD;&#xA;copy F:\Code\Jellyfin.Plugin.Dlna\Jellyfin.Plugin.Dlna\bin\Debug\net5.0\Jellyfin.Plugin.Dlna.dll C:\ProgramData\Jellyfin\Server\plugins\Jelly.Plugin.DlnaPlayTo_1.0.0.0\&#xD;&#xA;&#xD;&#xA;copy F:\Code\Jellyfin.Plugin.Dlna\Jellyfin.Plugin.Dlna\bin\Debug\net5.0\Jellyfin.Plugin.Dlna.pdb f:\code\symbolcache\*.* /y&#xD;&#xA;copy $(TargetDir)Jellyfin.Plugin.Dlna.PlayTo.pdb f:\code\symbolcache\*.* /y" />
   </Target>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">

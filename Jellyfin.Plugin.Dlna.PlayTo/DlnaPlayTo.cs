@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Api.Helpers;
 using Jellyfin.Networking.Configuration;
+using Jellyfin.Plugin.Dlna.Configuration;
 using Jellyfin.Plugin.Dlna.EventArgs;
 using Jellyfin.Plugin.Dlna.Helpers;
 using Jellyfin.Plugin.Dlna.Model;
@@ -55,6 +56,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
         private readonly CancellationTokenSource _disposeCancellationTokenSource = new();
         private readonly List<PlayToDevice> _devices = new();
         private readonly SsdpLocator _locator;
+        private readonly IDlnaProfileManager _profileManager;
         private bool _disposed;
         private string? _previousSettings;
 
@@ -77,7 +79,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
         /// <param name="mediaEncoder">The <see cref="IMediaEncoder"/>.</param>
         /// <param name="notificationManager">The <see cref="INotificationManager"/>.</param>
         /// <param name="networkManager">The <see cref="INetworkManager"/>.</param>
-        /// <param name="dlnaProfileManager">The <see cref="IDlnaProfileManager"/>.</param>
+        /// <param name="profileManager">The <see cref="IDlnaProfileManager"/>.</param>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1062:Validate arguments of public methods", Justification = "Created by DI.")]
         public DlnaPlayTo(
             IApplicationPaths applicationPaths,
             IXmlSerializer xmlSerializer,
@@ -95,13 +98,12 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             IMediaEncoder mediaEncoder,
             INotificationManager notificationManager,
             INetworkManager networkManager,
-            IDlnaProfileManager dlnaProfileManager)
+            IDlnaProfileManager profileManager)
             : base(applicationPaths, xmlSerializer)
         {
-            StreamingHelpers.ApplyDeviceProfileSettingsFunc = DlnaStreamHelper.ApplyDeviceProfileSettings;
-            StreamingHelpers.AddDlnaHeadersFunc = DlnaStreamHelper.AddDlnaHeaders;
-
+            StreamingHelpers.StreamEvent ??= DlnaStreamHelper.StreamEventProcessor;
             Instance = this;
+            _profileManager = profileManager;
             _logger = loggerFactory.CreateLogger<DlnaPlayTo>();
             _sessionManager = sessionManager;
             _libraryManager = libraryManager;
@@ -143,9 +145,9 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
         public event EventHandler<DlnaEventArgs>? DlnaEvents;
 
         /// <summary>
-        /// Gets or sets the Instance.
+        /// Gets the Instance.
         /// </summary>
-        public static DlnaPlayTo? Instance { get; set; }
+        public static DlnaPlayTo? Instance { get; private set; }
 
         /// <summary>
         /// Gets the Plugin Name.
@@ -321,7 +323,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
 
         private async Task AddDevice(DiscoveredSsdpDevice info)
         {
-            var deviceProperties = await PlayToDevice.ParseDevice(info.Location, _httpClientFactory, _logger).ConfigureAwait(false);
+            var deviceProperties = await PlayToDevice.ParseDevice(info, _httpClientFactory, _logger).ConfigureAwait(false);
 
             if (deviceProperties == null)
             {
@@ -344,7 +346,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
 
             string serverAddress = _appHost.GetSmartApiUrl(info.Endpoint.Address);
 
-            var device = await PlayToDevice.CreateDevice(deviceProperties, _httpClientFactory, _logger, serverAddress).ConfigureAwait(false);
+            var device = await PlayToDevice.CreateDevice(deviceProperties, _httpClientFactory, _logger, serverAddress, _profileManager).ConfigureAwait(false);
             _devices.Add(device);
 
 #pragma warning disable CA2000 // Dispose objects before losing scope
@@ -388,7 +390,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                 SupportsMediaControl = true
             });
 
-            _logger.LogInformation("DLNA Session created for {Name} - {Model}", device.Properties.Name, device.Properties.ModelName);
+            _logger.LogInformation("DLNA Session created for {Name} - {Model}", device.Name, deviceProperties.ModelName);
             _locator.SlowDown();
         }
 
@@ -416,7 +418,12 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                     _logger.LogDebug("SSDP Logging disabled.");
                 }
 
-                _locator.Server.SaveConfiguration();
+                // If the event has come from ssdp, don't save config.
+                if (sender is not SsdpConfiguration)
+                {
+                    _locator.Server.SaveConfiguration();
+                }
+
                 _previousSettings = settings;
             }
 

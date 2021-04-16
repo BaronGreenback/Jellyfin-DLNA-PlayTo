@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json.Serialization;
+using System.Xml.Serialization;
 using Jellyfin.Plugin.Dlna.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Model.Plugins;
@@ -61,14 +62,15 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         /// <summary>
         /// Gets the SSDP Configuration settings.
         /// </summary>
+        [XmlIgnore]
         [JsonIgnore]
-        public SsdpConfiguration? Configuration => _config?.GetConfiguration<SsdpConfiguration>("ssdp");
+        private SsdpConfiguration? Configuration => _config?.GetConfiguration<SsdpConfiguration>("ssdp");
 
         /// <summary>
         /// Gets or sets a value indicating whether detailed SSDP logs are sent to the console/log.
         /// "Emby.Dlna": "Debug" must be set in logging.default.json for this property to have any effect.
         /// </summary>
-        [JsonIgnore]
+        [XmlIgnore]
         public bool EnableSsdpTracing
         {
             get
@@ -89,7 +91,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         /// Gets or sets a value indicating whether an IP address is to be used to filter the detailed ssdp logs that are being sent to the console/log.
         /// If the setting "Emby.Dlna": "Debug" must be set in logging.default.json for this property to work.
         /// </summary>
-        [JsonIgnore]
+        [XmlIgnore]
         public string SsdpTracingFilter
         {
             get
@@ -109,7 +111,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         /// <summary>
         /// Gets or sets the range of UDP ports to use in communications as well as 1900.
         /// </summary>
-        [JsonIgnore]
+        [XmlIgnore]
         public string UdpPortRange
         {
             get
@@ -150,12 +152,12 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
             _config = config;
         }
 
-        internal void OnNamedChanged(object? sender, ConfigurationUpdateEventArgs args)
+        private void OnNamedChanged(object? sender, ConfigurationUpdateEventArgs args)
         {
             // Simulate on changed for ssdp changes.
             if (string.Equals(args.Key, "ssdp", StringComparison.OrdinalIgnoreCase))
             {
-                _handler?.Invoke(this, this);
+                _handler?.Invoke(args.NewConfiguration, this);
             }
         }
     }

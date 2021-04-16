@@ -1,5 +1,3 @@
-using System;
-
 namespace Jellyfin.Plugin.Dlna.PlayTo.Model
 {
     /// <summary>
@@ -16,20 +14,5 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Model
         /// Gets or sets the Url.
         /// </summary>
         public string Url { get; set; } = string.Empty;
-
-        /// <summary>
-        /// The Equals Method.
-        /// </summary>
-        /// <param name="other">The <see cref="UBaseObject"/>.</param>
-        /// <returns>True if this object matches <paramref name="other"/>.</returns>
-        public bool Equals(UBaseObject other)
-        {
-            if (other == null)
-            {
-                throw new ArgumentNullException(nameof(other));
-            }
-
-            return string.Equals(Id, other.Id, StringComparison.Ordinal);
-        }
     }
 }

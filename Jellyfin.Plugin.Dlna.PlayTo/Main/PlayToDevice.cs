@@ -22,6 +22,7 @@ using Jellyfin.Plugin.Dlna.PlayTo.EventArgs;
 using Jellyfin.Plugin.Dlna.PlayTo.Model;
 using Jellyfin.Plugin.Dlna.Profiles;
 using MediaBrowser.Common.Net;
+using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Notifications;
 using Microsoft.Extensions.Logging;
 
@@ -130,7 +131,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         private const int Normal = -1;
 
         private static readonly XNamespace _ud = "urn:schemas-upnp-org:device-1-0";
-        private static readonly DeviceProfile _blankProfile = new();
+        private static readonly DefaultProfile _blankProfile = new();
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger _logger;
         private readonly object _timerLock = new();
@@ -228,12 +229,18 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="serverAddress">The server address to use in the response.</param>
         private PlayToDevice(PlayToDeviceInfo playToDeviceInfo, IHttpClientFactory httpClientFactory, ILogger logger, string serverAddress)
         {
-            Properties = playToDeviceInfo;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
             _serverAddress = serverAddress;
             TransportState = TransportState.No_Media_Present;
             Profile = _blankProfile;
+            Name = playToDeviceInfo.Name;
+            Uuid = playToDeviceInfo.Uuid;
+            Services = playToDeviceInfo.Services;
+            foreach (var svc in Services)
+            {
+                svc?.Normalise(playToDeviceInfo.BaseUrl);
+            }
         }
 
         /// <summary>
@@ -282,14 +289,14 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         public static string FriendlyName { get; set; } = "Jellyfin";
 
         /// <summary>
-        /// Gets the services the device supports.
-        /// </summary>
-        public DeviceService?[] Services { get; } = { null, null, null };
-
-        /// <summary>
         /// Gets the Render Control service.
         /// </summary>
-        public DeviceService? RenderControl => Services[(int)ServiceType.RenderControl];
+        private DeviceService? RenderControl => Services[(int)ServiceType.RenderControl];
+
+        /// <summary>
+        /// Gets the services the device supports.
+        /// </summary>
+        private DeviceService?[] Services { get; }
 
         //// <summary>
         //// Gets the Connection Manager service.
@@ -299,12 +306,17 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <summary>
         /// Gets the AVTransport service.
         /// </summary>
-        public DeviceService? AvTransport => Services[(int)ServiceType.AvTransport];
+        private DeviceService? AvTransport => Services[(int)ServiceType.AvTransport];
 
         /// <summary>
-        /// Gets the device's properties.
+        /// Gets the device's Uuid.
         /// </summary>
-        public PlayToDeviceInfo Properties { get; }
+        public string Uuid { get; }
+
+        /// <summary>
+        /// Gets the device's name.
+        /// </summary>
+        public string Name { get; }
 
         /// <summary>
         /// Gets a value indicating whether the sound is muted.
@@ -335,14 +347,14 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     }
                     catch (HttpRequestException ex)
                     {
-                        _logger.LogError(ex, "{Name}: Error getting device volume.", Properties.Name);
+                        _logger.LogError(ex, "{Name}: Error getting device volume.", Name);
                     }
                 }
 
                 int calculateVolume = _volRange.GetValue(_volume);
                 if (Tracing)
                 {
-                    _logger.LogDebug("{Name}: Returning a volume setting of {Volume}.", Properties.Name, calculateVolume);
+                    _logger.LogDebug("{Name}: Returning a volume setting of {Volume}.", Name, calculateVolume);
                 }
 
                 return calculateVolume;
@@ -370,7 +382,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         public TimeSpan? Duration { get; private set; }
 
         /// <summary>
-        /// Gets or sets the Position.
+        /// Gets the Position.
         /// </summary>
         public TimeSpan Position
         {
@@ -379,7 +391,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 return _position.Add(_transportOffset);
             }
 
-            set
+            private set
             {
                 _position = value;
             }
@@ -398,7 +410,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <summary>
         /// Gets a value indicating whether IsStopped.
         /// </summary>
-        public bool IsStopped => TransportState == TransportState.Stopped;
+        private bool IsStopped => TransportState == TransportState.Stopped;
 
         /// <summary>
         /// Gets or sets the OnDeviceUnavailable.
@@ -406,9 +418,9 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         public Action? OnDeviceUnavailable { get; set; }
 
         /// <summary>
-        /// Gets or sets the device's profile.
+        /// Gets the device's profile.
         /// </summary>
-        public DeviceProfile Profile { get; set; }
+        public DeviceProfile Profile { get; private set; }
 
         /// <summary>
         /// Gets a value indicating whether trace information should be redirected to the logs.
@@ -423,26 +435,16 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <summary>
         /// Generates a PlayToDeviceInfo from the device at the address contained in the url parameter."/>.
         /// </summary>
-        /// <param name="url">The url of the device.</param>
+        /// <param name="info">The <see cref="DiscoveredSsdpDevice"/> instance.</param>
         /// <param name="httpClientFactory">The <see cref="IHttpClientFactory"/> instance.</param>
         /// <param name="logger">The <see cref="ILogger"/> instance.</param>
         /// <returns>The <see cref="Task"/>.</returns>
-        public static async Task<PlayToDeviceInfo?> ParseDevice(Uri url, IHttpClientFactory httpClientFactory, ILogger logger)
+        public static async Task<PlayToDeviceInfo?> ParseDevice(DiscoveredSsdpDevice info, IHttpClientFactory httpClientFactory, ILogger logger)
         {
-            if (url == null)
-            {
-                throw new ArgumentNullException(nameof(url));
-            }
-
-            if (httpClientFactory == null)
-            {
-                throw new ArgumentNullException(nameof(httpClientFactory));
-            }
-
             XElement document;
             try
             {
-                document = await GetDataAsync(httpClientFactory, url, logger).ConfigureAwait(false);
+                document = await GetDataAsync(httpClientFactory, info.Location, logger).ConfigureAwait(false);
             }
 #pragma warning disable CA1031 // Do not catch general exception types
             catch
@@ -483,12 +485,13 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 return null;
             }
 
+            var parsedUrl = new Uri(info.Location);
             if (friendlyNames.Count == 0)
             {
-                friendlyNames.Add(url.OriginalString);
+                friendlyNames.Add(parsedUrl.OriginalString);
             }
 
-            var deviceProperties = new PlayToDeviceInfo(string.Join(" ", friendlyNames), $"http://{url.Host}:{url.Port}", uuid.Value);
+            var deviceProperties = new PlayToDeviceInfo(string.Join(" ", friendlyNames), $"{parsedUrl.Scheme}://{parsedUrl.Host}:{parsedUrl.Port}", uuid.Value, info.Endpoint.Address);
 
             var model = document.Descendants(_ud.GetName("modelName")).FirstOrDefault();
             if (model != null)
@@ -565,19 +568,22 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="httpClientFactory">The <see cref="IHttpClientFactory"/> instance.</param>
         /// <param name="logger">The <see cref="ILogger"/> instance.</param>
         /// <param name="serverAddress">The server address to embed in the Didl.</param>
+        /// <param name="profileManager">The <see cref="IDlnaProfileManager"/>.</param>
         /// <returns>The <see cref="Task"/>.</returns>
         public static async Task<PlayToDevice> CreateDevice(
             PlayToDeviceInfo deviceProperties,
             IHttpClientFactory httpClientFactory,
             ILogger logger,
-            string serverAddress)
+            string serverAddress,
+            IDlnaProfileManager profileManager)
         {
             var device = new PlayToDevice(deviceProperties, httpClientFactory, logger, serverAddress);
 
             // Get device capabilities.
             var capabilities = await device.GetProtocolInfo().ConfigureAwait(false);
 
-            device.Profile = DlnaProfileManager.Instance!.GetProfile(deviceProperties, capabilities);
+            device.Profile = profileManager.GetProfile(deviceProperties, capabilities, true);
+
             return device;
         }
 
@@ -638,13 +644,13 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 {
                     if (Tracing)
                     {
-                        _logger.LogDebug(ex, "{Name}: Error initialising device.", Properties.Name);
+                        _logger.LogDebug(ex, "{Name}: Error initialising device.", Name);
                     }
                 }
 
                 if (Tracing)
                 {
-                    _logger.LogDebug("{Name}: Starting timer.", Properties.Name);
+                    _logger.LogDebug("{Name}: Starting timer.", Name);
                 }
 
                 _timer = new Timer(TimerCallback, null, 500, Timeout.Infinite);
@@ -664,7 +670,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             {
                 if (Tracing)
                 {
-                    _logger.LogDebug("{Name}: Killing the timer.", Properties.Name);
+                    _logger.LogDebug("{Name}: Killing the timer.", Name);
                 }
 
                 await UnSubscribeAsync().ConfigureAwait(false);
@@ -818,19 +824,10 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         }
 
         /// <summary>
-        /// Returns a string representation of this object.
-        /// </summary>
-        /// <returns>The .</returns>
-        public override string ToString()
-        {
-            return $"{Properties.Name} - {Properties.BaseUrl}";
-        }
-
-        /// <summary>
         /// Override this method and dispose any objects you own the lifetime of if disposing is true.
         /// </summary>
         /// <param name="disposing">True if managed objects should be disposed, if false, only unmanaged resources should be released.</param>
-        protected virtual void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
             if (_disposed)
             {
@@ -844,22 +841,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             }
 
             _disposed = true;
-        }
-
-        private static Uri NormalizeUrl(string baseUrl, string url, bool dmr = false)
-        {
-            // If it's already a complete url, don't stick anything onto the front of it
-            if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-            {
-                return new Uri(url);
-            }
-
-            if (dmr && !url.Contains("/", StringComparison.OrdinalIgnoreCase))
-            {
-                url = "/dmr/" + url;
-            }
-
-            return new Uri(baseUrl + url);
         }
 
         /// <summary>
@@ -933,7 +914,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="url">The destination URL.</param>
         /// <param name="logger">ILogger instance.</param>
         /// <returns>The <see cref="Task{XDocument}"/>.</returns>
-        private static async Task<XElement> GetDataAsync(IHttpClientFactory httpClientFactory, Uri url, ILogger logger)
+        private static async Task<XElement> GetDataAsync(IHttpClientFactory httpClientFactory, string url, ILogger logger)
         {
             using var options = new HttpRequestMessage(HttpMethod.Get, url);
             options.Headers.UserAgent.ParseAdd(UserAgent);
@@ -1008,7 +989,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             var commands = await GetProtocolAsync(Services[(int)serviceType]).ConfigureAwait(false);
             if (commands == null)
             {
-                _logger.LogWarning("{Name}: GetProtocolAsync for {serviceType} returned null.", Properties.Name, serviceType);
+                _logger.LogWarning("{Name}: GetProtocolAsync for {serviceType} returned null.", Name, serviceType);
                 return null;
             }
 
@@ -1073,14 +1054,14 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 {
                     if (Tracing)
                     {
-                        _logger.LogDebug("{Name}: Replacing user event: {Command} {Value:l}", Properties.Name, command, value);
+                        _logger.LogDebug("{Name}: Replacing user event: {Command} {Value:l}", Name, command, value);
                     }
 
                     _queue.RemoveAt(index);
                 }
                 else if (Tracing)
                 {
-                    _logger.LogDebug("{Name}: Queuing user event: {Command} {Value:l}", Properties.Name, command, value);
+                    _logger.LogDebug("{Name}: Queuing user event: {Command} {Value:l}", Name, command, value);
                 }
 
                 _queue.Add(new KeyValuePair<QueueCommands, object>(command, value ?? 0));
@@ -1100,7 +1081,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 {
                     if (Tracing)
                     {
-                        _logger.LogDebug("{Name}: Cancelling user event: {Command}", Properties.Name, command);
+                        _logger.LogDebug("{Name}: Canceling user event: {Command}", Name, command);
                     }
 
                     _queue.RemoveAt(index);
@@ -1109,7 +1090,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 {
                     if (Tracing)
                     {
-                        _logger.LogDebug("{Name} : Queuing user event: {Command}", Properties.Name, command);
+                        _logger.LogDebug("{Name} : Queuing user event: {Command}", Name, command);
                     }
 
                     _queue.Add(new KeyValuePair<QueueCommands, object>(command, 0));
@@ -1146,6 +1127,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             // Infinite loop until dispose.
             while (!_disposed)
             {
+                Profile.LastUsed = DateTime.UtcNow;
+
                 // Process items in the queue.
                 while (TryPop(out var action, defaultValue))
                 {
@@ -1155,7 +1138,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     {
                         if (Tracing)
                         {
-                            _logger.LogDebug("{Name}: Attempting action : {Key}", Properties.Name, action.Key);
+                            _logger.LogDebug("{Name}: Attempting action : {Key}", Name, action.Key);
                         }
 
                         switch (action.Key)
@@ -1163,7 +1146,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                             case QueueCommands.SetVolume:
                                 {
                                     await SendVolumeRequest((int)action.Value).ConfigureAwait(false);
-
                                     break;
                                 }
 
@@ -1278,7 +1260,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 {
                     if (Tracing)
                     {
-                        _logger.LogDebug("{Name}: Stopping current playback for transition.", Properties.Name);
+                        _logger.LogDebug("{Name}: Stopping current playback for transition.", Name);
                     }
 
                     bool success = await SendStopRequest().ConfigureAwait(false);
@@ -1296,7 +1278,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     // Restart from the beginning.
                     if (Tracing)
                     {
-                        _logger.LogDebug("{Name}: Resetting playback position.", Properties.Name);
+                        _logger.LogDebug("{Name}: Resetting playback position.", Name);
                     }
 
                     bool success = await SendSeekRequest(TimeSpan.Zero).ConfigureAwait(false);
@@ -1330,7 +1312,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
             if (Tracing)
             {
-                _logger.LogDebug("{Name}: User notification: {Notification}", Properties.Name, notification.NotificationType);
+                _logger.LogDebug("{Name}: User notification: {Notification}", Name, notification.NotificationType);
             }
 
             try
@@ -1341,7 +1323,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             catch (Exception ex)
 #pragma warning restore CA1031 // Do not catch general exception types
             {
-                _logger.LogError(ex, "{Name} : Error sending notification.", Properties.Name);
+                _logger.LogError(ex, "{Name} : Error sending notification.", Name);
             }
         }
 
@@ -1364,11 +1346,10 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 throw new ObjectDisposedException(string.Empty);
             }
 
-            var url = NormalizeUrl(Properties.BaseUrl, service.ControlUrl);
             var stopWatch = new Stopwatch();
             var cts = new CancellationTokenSource();
 
-            using var options = new HttpRequestMessage(HttpMethod.Post, url);
+            using var options = new HttpRequestMessage(HttpMethod.Post, service.ControlUrl);
             options.Headers.UserAgent.ParseAdd(UserAgent);
             options.Headers.TryAddWithoutValidation("SOAPACTION", $"\"{service.ServiceType}#{command}\"");
             options.Headers.TryAddWithoutValidation("Pragma", "no-cache");
@@ -1384,7 +1365,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
             if (Tracing)
             {
-                _logger.LogDebug("{Name}:-> {Url}\r\nHeader\r\n{Headers:l}\r\nData\r\n{Data:l}", Properties.Name, url, PrettyPrint(options.Headers), postData);
+                _logger.LogDebug("{Name}:-> {Url}\r\nHeader\r\n{Headers:l}\r\nData\r\n{Data:l}", Name, service.ControlUrl, PrettyPrint(options.Headers), postData);
             }
 
             try
@@ -1408,15 +1389,15 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "{Name}: SendCommandAsync timed out: {Url}.", Properties.Name, url);
+                _logger.LogError(ex, "{Name}: SendCommandAsync timed out: {Url}.", Name, service.ControlUrl);
                 return null;
             }
             catch (HttpRequestException ex)
             {
                 var msg = string.Format(
                     "SendCommandAsync failed. {0}:-> {1}\r\nHeader\r\n{2:l}\r\nData\r\n{3:l}",
-                    Properties.Name,
-                    url,
+                    Name,
+                    service.ControlUrl,
                     PrettyPrint(options.Headers),
                     postData.Replace(">", ">\r\n", StringComparison.Ordinal));
                 _logger.LogError(ex, msg);
@@ -1462,13 +1443,13 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             var command = commands?.ServiceActions.FirstOrDefault(c => c.Name == actionCommand);
             if (service == null)
             {
-                _logger.LogDebug("{Name}: Service {Service} not implemented.", Properties.Name, service);
+                _logger.LogDebug("{Name}: Service {Service} not implemented.", Name, service);
                 return null;
             }
 
             if (command == null)
             {
-                _logger.LogDebug("{Name}: Command {Command} not supported.", Properties.Name, command);
+                _logger.LogDebug("{Name}: Command {Command} not supported.", Name, command);
                 return null;
             }
 
@@ -1492,7 +1473,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
             if (Tracing)
             {
-                _logger.LogDebug("{Name}: Transmitting {Command} to device.", Properties.Name, command.Name);
+                _logger.LogDebug("{Name}: Transmitting {Command} to device.", Name, command.Name);
             }
 
             return await SendCommandAsync(service, command.Name, postData, header).ConfigureAwait(false);
@@ -1533,7 +1514,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 result.TryGetValue("errorCode", out var errorCode);
                 result.TryGetValue("errorDescription", out var errorDescription);
 
-                string msg = $"{Properties.Name} : Cmd : {actionCommand}. Fault: {fault}. Code: {errorCode}. {errorDescription}";
+                string msg = $"{Name} : Cmd : {actionCommand}. Fault: {fault}. Code: {errorCode}. {errorDescription}";
                 await NotifyUser(msg).ConfigureAwait(false);
                 _logger.LogError(msg);
 
@@ -1541,7 +1522,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 {
                     foreach (var entry in result)
                     {
-                        _logger.LogDebug("{Name}: {Key} = {Value:l}", Properties.Name, entry.Key, entry.Value);
+                        _logger.LogDebug("{Name}: {Key} = {Value:l}", Name, entry.Key, entry.Value);
                     }
                 }
             }
@@ -1567,8 +1548,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 return string.Empty;
             }
 
-            var url = NormalizeUrl(Properties.BaseUrl, service.EventSubUrl);
-            using var options = new HttpRequestMessage(new HttpMethod("SUBSCRIBE"), url);
+            using var options = new HttpRequestMessage(new HttpMethod("SUBSCRIBE"), service.EventSubUrl);
             options.Headers.UserAgent.ParseAdd(UserAgent);
             options.Headers.TryAddWithoutValidation("Accept", MediaTypeNames.Text.Xml);
 
@@ -1599,7 +1579,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
             if (Tracing)
             {
-                _logger.LogDebug("->{Name}:\r\nHeaders: {Headers:l}", url, PrettyPrint(options.Headers));
+                _logger.LogDebug("->{Name}:\r\nHeaders: {Headers:l}", service.EventSubUrl, PrettyPrint(options.Headers));
             }
 
             var cts = new CancellationTokenSource();
@@ -1613,7 +1593,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 {
                     if (Tracing)
                     {
-                        _logger.LogDebug("{Name}:<- Error:{StatusCode} : {Reason}", Properties.Name, response.StatusCode, response.ReasonPhrase);
+                        _logger.LogDebug("{Name}:<- Error:{StatusCode} : {Reason}", Name, response.StatusCode, response.ReasonPhrase);
                     }
 
                     return string.Empty;
@@ -1623,7 +1603,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 {
                     if (Tracing)
                     {
-                        _logger.LogDebug("{Name}: SUBSCRIBE successful.", Properties.Name);
+                        _logger.LogDebug("{Name}: SUBSCRIBE successful.", Name);
                     }
 
                     return response.Headers.GetValues("SID").FirstOrDefault();
@@ -1631,11 +1611,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             }
             catch (TaskCanceledException)
             {
-                _logger.LogError("{Name}: SUBSCRIBE timed out.", Properties.Name);
+                _logger.LogError("{Name}: SUBSCRIBE timed out.", Name);
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "{Name}: SUBSCRIBE failed: {StatusCode}", Properties.Name, ex.StatusCode);
+                _logger.LogError(ex, "{Name}: SUBSCRIBE failed: {StatusCode}", Name, ex.StatusCode);
             }
             finally
             {
@@ -1669,7 +1649,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                     if (Tracing)
                     {
-                        _logger.LogDebug("{Name}: AVTransport SID {avtId}, RenderControl {RCId}.", Properties.Name, _transportSid, _renderSid);
+                        _logger.LogDebug("{Name}: AVTransport SID {avtId}, RenderControl {RCId}.", Name, _transportSid, _renderSid);
                     }
 
                     _subscribed = true;
@@ -1714,15 +1694,14 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 return false;
             }
 
-            var url = NormalizeUrl(Properties.BaseUrl, service.EventSubUrl);
-            using var options = new HttpRequestMessage(new HttpMethod("UNSUBSCRIBE"), url);
+            using var options = new HttpRequestMessage(new HttpMethod("UNSUBSCRIBE"), service.EventSubUrl);
             options.Headers.UserAgent.ParseAdd(UserAgent);
             options.Headers.TryAddWithoutValidation("SID", "uuid: {sid}");
             options.Headers.TryAddWithoutValidation("Accept", MediaTypeNames.Text.Xml);
 
             if (Tracing)
             {
-                _logger.LogDebug("-> {Name}:\r\nHeaders : {Headers:l}", url, PrettyPrint(options.Headers));
+                _logger.LogDebug("-> {Name}:\r\nHeaders : {Headers:l}", service.EventSubUrl, PrettyPrint(options.Headers));
             }
 
             var cts = new CancellationTokenSource();
@@ -1738,23 +1717,23 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 {
                     if (Tracing)
                     {
-                        _logger.LogDebug("{Name}: UNSUBSCRIBE succeeded.", Properties.Name);
+                        _logger.LogDebug("{Name}: UNSUBSCRIBE succeeded.", Name);
                     }
 
                     return true;
                 }
                 else if (Tracing)
                 {
-                    _logger.LogDebug("{Name}: UNSUBSCRIBE failed. {Content:l}", Properties.Name, response.Content);
+                    _logger.LogDebug("{Name}: UNSUBSCRIBE failed. {Content:l}", Name, response.Content);
                 }
             }
             catch (TaskCanceledException)
             {
-                _logger.LogWarning("{Name}: UNSUBSCRIBE timed out.", Properties.Name);
+                _logger.LogWarning("{Name}: UNSUBSCRIBE timed out.", Name);
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogWarning(ex, "{Name}: UNSUBSCRIBE failed.", Properties.Name);
+                _logger.LogWarning(ex, "{Name}: UNSUBSCRIBE failed.", Name);
             }
             finally
             {
@@ -1813,7 +1792,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
             if (Tracing)
             {
-                _logger.LogDebug("{Name}:<-Event received:\r\n{Response:l}", Properties.Name, args.Response);
+                _logger.LogDebug("{Name}:<-Event received:\r\n{Response:l}", Name, args.Response);
             }
 
             try
@@ -1822,7 +1801,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 {
                     if (Tracing)
                     {
-                        _logger.LogDebug("{Name}: Processing a subscription event.", Properties.Name);
+                        _logger.LogDebug("{Name}: Processing a subscription event.", Name);
                     }
 
                     // Render events.
@@ -1841,7 +1820,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     {
                         if (Tracing)
                         {
-                            _logger.LogDebug("{Name}: Volume: {Volume}", Properties.Name, volume);
+                            _logger.LogDebug("{Name}: Volume: {Volume}", Name, volume);
                         }
 
                         _lastVolumeRefresh = DateTime.UtcNow;
@@ -1854,7 +1833,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     {
                         if (Tracing)
                         {
-                            _logger.LogDebug("{Name}: TransportState: {State}", Properties.Name, ts);
+                            _logger.LogDebug("{Name}: TransportState: {State}", Name, ts);
                         }
 
                         // Mustn't process our own change playback event.
@@ -1878,7 +1857,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                         {
                             if (Tracing)
                             {
-                                _logger.LogDebug("{Name}: Updating position as not included.", Properties.Name);
+                                _logger.LogDebug("{Name}: Updating position as not included.", Name);
                             }
 
                             // Try and get the latest position update
@@ -1888,7 +1867,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                         {
                             if (Tracing)
                             {
-                                _logger.LogDebug("{Name}: RelativeTimePosition: {Position}", Properties.Name, rel);
+                                _logger.LogDebug("{Name}: RelativeTimePosition: {Position}", Name, rel);
                             }
 
                             Position = rel;
@@ -1901,7 +1880,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     {
                         if (Tracing)
                         {
-                            _logger.LogDebug("{Name}: CurrentTrackDuration: {Duration}", Properties.Name, dur);
+                            _logger.LogDebug("{Name}: CurrentTrackDuration: {Duration}", Name, dur);
                         }
 
                         Duration = dur;
@@ -1928,7 +1907,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 }
                 else if (Tracing)
                 {
-                    _logger.LogDebug("{Name}: Received blank event data : ", Properties.Name);
+                    _logger.LogDebug("{Name}: Received blank event data : ", Name);
                 }
             }
             catch (ObjectDisposedException)
@@ -1937,10 +1916,10 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError("{Name}: Unable to parse event response.", Properties.Name);
+                _logger.LogError("{Name}: Unable to parse event response.", Name);
                 if (Tracing)
                 {
-                    _logger.LogDebug(ex, "{Name}: Received:\r\n{Response:l}", Properties.Name, args.Response);
+                    _logger.LogDebug(ex, "{Name}: Received:\r\n{Response:l}", Name, args.Response);
                 }
             }
         }
@@ -1958,7 +1937,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
             if (Tracing)
             {
-                _logger.LogDebug("{Name}: Timer firing.", Properties.Name);
+                _logger.LogDebug("{Name}: Timer firing.", Name);
             }
 
             try
@@ -1967,7 +1946,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                 if (transportState == TransportState.Error)
                 {
-                    _logger.LogError("{Name}: Unable to get TransportState.", Properties.Name);
+                    _logger.LogError("{Name}: Unable to get TransportState.", Name);
 
                     // Assume it's a one off.
                     RestartTimer(Normal);
@@ -2037,12 +2016,12 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     return;
                 }
 
-                _logger.LogError(ex, "{Name}: Error updating device info.", Properties.Name);
+                _logger.LogError(ex, "{Name}: Error updating device info.", Name);
                 if (_connectFailureCount++ >= 3)
                 {
                     if (Tracing)
                     {
-                        _logger.LogDebug("{Name}: Disposing device due to loss of connection.", Properties.Name);
+                        _logger.LogDebug("{Name}: Disposing device due to loss of connection.", Name);
                     }
 
                     OnDeviceUnavailable?.Invoke();
@@ -2107,7 +2086,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     return true;
                 }
 
-                _logger.LogWarning("{Name}: GetVolume Failed.", Properties.Name);
+                _logger.LogWarning("{Name}: GetVolume Failed.", Name);
             }
             catch (ObjectDisposedException)
             {
@@ -2115,7 +2094,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             }
             catch (FormatException)
             {
-                _logger.LogError("{Name}: Error parsing GetVolume {Volume}.", Properties.Name, volume);
+                _logger.LogError("{Name}: Error parsing GetVolume {Volume}.", Name, volume);
             }
 
             return false;
@@ -2140,7 +2119,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     return settings!;
                 }
 
-                _logger.LogWarning("{Name}: GetProtocolInfo Failed.", Properties.Name);
+                _logger.LogWarning("{Name}: GetProtocolInfo Failed.", Name);
             }
             catch (NullReferenceException)
             {
@@ -2238,15 +2217,15 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                         return state;
                     }
 
-                    _logger.LogWarning("{Name}: Unable to parse CurrentTransportState {State}.", Properties.Name, TransportState);
+                    _logger.LogWarning("{Name}: Unable to parse CurrentTransportState {State}.", Name, TransportState);
                     return TransportState.Error;
                 }
 
-                _logger.LogWarning("{Name}: GetTransportState did not include CurrentTransportState.", Properties.Name);
+                _logger.LogWarning("{Name}: GetTransportState did not include CurrentTransportState.", Name);
                 return TransportState.Error;
             }
 
-            _logger.LogWarning("{Name}: GetTransportInfo failed.", Properties.Name);
+            _logger.LogWarning("{Name}: GetTransportInfo failed.", Name);
 
             return TransportState.Error;
         }
@@ -2288,11 +2267,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     return true;
                 }
 
-                _logger.LogWarning("{Name}: CurrentMute missing from GetMute.", Properties.Name);
+                _logger.LogWarning("{Name}: CurrentMute missing from GetMute.", Name);
             }
             else
             {
-                _logger.LogWarning("{Name}: GetMute failed.", Properties.Name);
+                _logger.LogWarning("{Name}: GetMute failed.", Name);
             }
 
             return false;
@@ -2306,7 +2285,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             {
                 _logger.LogDebug(
                     "{Name}:\r\n{Command} Uri: {Url}\r\nDlnaHeaders: {Headers:l}\r\n{Metadata:l}",
-                    Properties.Name,
+                    Name,
                     cmd,
                     settings.Url,
                     settings.Headers,
@@ -2375,7 +2354,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 return retVal;
             }
 
-            _logger.LogWarning("{Name}: GetMediaInfo failed.", Properties.Name);
+            _logger.LogWarning("{Name}: GetMediaInfo failed.", Name);
 
             return null;
         }
@@ -2459,10 +2438,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 return null;
             }
 
-            var document = await GetDataAsync(
-                _httpClientFactory,
-                NormalizeUrl(Properties.BaseUrl, services.ScpdUrl, true),
-                _logger).ConfigureAwait(false);
+            var document = await GetDataAsync(_httpClientFactory, services.ScpdUrl, _logger).ConfigureAwait(false);
 
             return TransportCommands.Create(document, _logger);
         }
@@ -2488,7 +2464,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                         if (Tracing)
                         {
-                            _logger.LogDebug("{Name}: Firing playback started event.", Properties.Name);
+                            _logger.LogDebug("{Name}: Firing playback started event.", Name);
                         }
 
                         PlaybackStart?.Invoke(this, new PlaybackEventArgs(mediaInfo));
@@ -2502,7 +2478,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                         if (Tracing)
                         {
-                            _logger.LogDebug("{Name}: Firing playback progress event.", Properties.Name);
+                            _logger.LogDebug("{Name}: Firing playback progress event.", Name);
                         }
 
                         PlaybackProgress?.Invoke(this, new PlaybackEventArgs(mediaInfo));
@@ -2511,7 +2487,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     {
                         if (Tracing)
                         {
-                            _logger.LogDebug("{Name}: Firing media change event.", Properties.Name);
+                            _logger.LogDebug("{Name}: Firing media change event.", Name);
                         }
 
                         MediaChanged?.Invoke(this, new MediaChangedEventArgs(previousMediaInfo, mediaInfo));
@@ -2521,7 +2497,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 {
                     if (Tracing)
                     {
-                        _logger.LogDebug("{Name}: Firing playback stopped event.", Properties.Name);
+                        _logger.LogDebug("{Name}: Firing playback stopped event.", Name);
                     }
 
                     PlaybackStopped?.Invoke(this, new PlaybackEventArgs(previousMediaInfo));
@@ -2533,7 +2509,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             catch (Exception ex)
 #pragma warning restore CA1031 // Do not catch general exception types
             {
-                _logger.LogError(ex, "{Name}: UpdateMediaInfo erred.", Properties.Name);
+                _logger.LogError(ex, "{Name}: UpdateMediaInfo erred.", Name);
             }
         }
 

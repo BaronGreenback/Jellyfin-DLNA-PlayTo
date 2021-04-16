@@ -3,7 +3,9 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using Jellyfin.Api;
+using Jellyfin.Api.Constants;
 using Jellyfin.Plugin.Dlna.EventArgs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jellyfin.Plugin.Dlna.PlayTo.Api
@@ -12,6 +14,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Api
     /// Dlna PlayTo Controller.
     /// </summary>
     [Route("Dlna")]
+    [Authorize(Policy = Policies.LocalNetworkAccessPolicy)]
     public class DlnaPlayToController : BaseJellyfinApiController
     {
         /// <summary>
