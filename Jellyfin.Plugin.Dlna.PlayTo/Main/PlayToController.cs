@@ -11,6 +11,7 @@ using Jellyfin.Plugin.Dlna.Didl;
 using Jellyfin.Plugin.Dlna.Model;
 using Jellyfin.Plugin.Dlna.PlayTo.EventArgs;
 using Jellyfin.Plugin.Dlna.PlayTo.Model;
+using Jellyfin.Plugin.Dlna.Profiles;
 using Jellyfin.Plugin.Dlna.Ssdp;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Drawing;
@@ -50,6 +51,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         private readonly string? _accessToken;
         private readonly List<PlaylistItem> _playlist = new();
         private readonly PlayToDevice _device;
+        private readonly IDlnaProfileManager _profileManager;
         private int _currentPlaylistIndex = -1;
         private bool _disposed;
 
@@ -71,6 +73,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="config">The <see cref="IServerConfigurationManager"/>.</param>
         /// <param name="mediaEncoder">The mediaEncoder<see cref="IMediaEncoder"/>.</param>
         /// <param name="device">The <see cref="PlayToDevice"/>.</param>
+        /// <param name="dlnaProfileManager">The <see cref="IDlnaProfileManager"/>.</param>
         public PlayToController(
             SessionInfo session,
             ISessionManager sessionManager,
@@ -86,7 +89,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             IMediaSourceManager mediaSourceManager,
             IServerConfigurationManager config,
             IMediaEncoder mediaEncoder,
-            PlayToDevice device)
+            PlayToDevice device,
+            IDlnaProfileManager dlnaProfileManager)
         {
             _session = session;
             _sessionManager = sessionManager;
@@ -103,6 +107,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             _config = config;
             _mediaEncoder = mediaEncoder;
             _device = device;
+            _profileManager = dlnaProfileManager;
 
             _device.OnDeviceUnavailable = OnDeviceUnavailable;
             _device.PlaybackStart += OnDevicePlaybackStart;
@@ -233,7 +238,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             try
             {
                 _sessionManager.ReportSessionEnded(_session.Id);
-                _ = _device.DeviceUnavailable();
+                _profileManager.DeleteProfile(_device.Profile.Id);
+                _= _device.DeviceUnavailable();
             }
 #pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception ex)

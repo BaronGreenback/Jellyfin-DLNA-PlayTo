@@ -12,9 +12,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
     /// </summary>
     public class PlayToConfiguration : BasePluginConfiguration
     {
-        private EventHandler<BasePluginConfiguration>? _handler;
-        private IConfigurationManager? _config;
-
         /// <summary>
         /// Gets or sets a value indicating whether detailed playTo debug logs are sent to the console/log.
         /// If the setting "Emby.Dlna.PlayTo": "Debug" must be set in logging.default.json for this property to work.
@@ -60,105 +57,20 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         public string FriendlyName { get; set; } = "Jellyfin";
 
         /// <summary>
-        /// Gets the SSDP Configuration settings.
-        /// </summary>
-        [XmlIgnore]
-        [JsonIgnore]
-        private SsdpConfiguration? Configuration => _config?.GetConfiguration<SsdpConfiguration>("ssdp");
-
-        /// <summary>
         /// Gets or sets a value indicating whether detailed SSDP logs are sent to the console/log.
         /// "Emby.Dlna": "Debug" must be set in logging.default.json for this property to have any effect.
         /// </summary>
-        [XmlIgnore]
-        public bool EnableSsdpTracing
-        {
-            get
-            {
-                return Configuration?.EnableSsdpTracing ?? false;
-            }
-
-            set
-            {
-                if (Configuration != null)
-                {
-                    Configuration.EnableSsdpTracing = value;
-                }
-            }
-        }
+        public bool EnableSsdpTracing { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether an IP address is to be used to filter the detailed ssdp logs that are being sent to the console/log.
         /// If the setting "Emby.Dlna": "Debug" must be set in logging.default.json for this property to work.
         /// </summary>
-        [XmlIgnore]
-        public string SsdpTracingFilter
-        {
-            get
-            {
-                return Configuration?.SsdpTracingFilter ?? string.Empty;
-            }
-
-            set
-            {
-                if (Configuration != null)
-                {
-                    Configuration.SsdpTracingFilter = value;
-                }
-            }
-        }
+        public string SsdpTracingFilter { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the range of UDP ports to use in communications as well as 1900.
         /// </summary>
-        [XmlIgnore]
-        public string UdpPortRange
-        {
-            get
-            {
-                return Configuration?.UdpPortRange ?? string.Empty;
-            }
-
-            set
-            {
-                if (Configuration != null)
-                {
-                    Configuration.UdpPortRange = value;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Defines the configuration manager to use.
-        /// </summary>
-        /// <param name="config">The <see cref="IConfigurationManager"/> instance.</param>
-        /// <param name="handler">The event handler to fire on change.</param>
-        internal void SetConfigurationManager(IConfigurationManager? config, EventHandler<BasePluginConfiguration> handler)
-        {
-            _config = config;
-            _handler = handler;
-            if (config == null)
-            {
-                if (_config != null)
-                {
-                    _config.NamedConfigurationUpdated -= OnNamedChanged;
-                }
-            }
-            else
-            {
-                config.NamedConfigurationUpdated += OnNamedChanged;
-            }
-
-            _config = config;
-        }
-
-        private void OnNamedChanged(object? sender, ConfigurationUpdateEventArgs args)
-        {
-            // Simulate on changed for ssdp changes.
-            if (string.Equals(args.Key, "ssdp", StringComparison.OrdinalIgnoreCase))
-            {
-                _handler?.Invoke(args.NewConfiguration, this);
-            }
-        }
+        public string UdpPortRange { get; set; } = "49152-65535";
     }
 }

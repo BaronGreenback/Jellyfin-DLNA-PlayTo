@@ -460,25 +460,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 return null;
             }
 
-            var friendlyNames = new List<string>();
-
-            var name = document.Descendants(_ud.GetName("friendlyName")).FirstOrDefault();
-            if (name != null && !string.IsNullOrWhiteSpace(name.Value))
-            {
-                // Some devices include their MAC addresses as part of their name.
-                var value = Regex.Replace(name.Value, "([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})", string.Empty)
-                    .Replace("()", string.Empty, StringComparison.OrdinalIgnoreCase)
-                    .Replace("[]", string.Empty, StringComparison.OrdinalIgnoreCase)
-                    .Trim();
-                friendlyNames.Add(value);
-            }
-
-            var room = document.Descendants(_ud.GetName("roomName")).FirstOrDefault();
-            if (room != null && !string.IsNullOrWhiteSpace(room.Value))
-            {
-                friendlyNames.Add(room.Value);
-            }
-
             var uuid = document.Descendants(_ud.GetName("UDN")).FirstOrDefault();
             if (uuid == null)
             {
@@ -486,12 +467,19 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             }
 
             var parsedUrl = new Uri(info.Location);
-            if (friendlyNames.Count == 0)
-            {
-                friendlyNames.Add(parsedUrl.OriginalString);
-            }
+            var friendlyName = document.Descendants(_ud.GetName("friendlyName")).FirstOrDefault()?.Value;
 
-            var deviceProperties = new PlayToDeviceInfo(string.Join(" ", friendlyNames), $"{parsedUrl.Scheme}://{parsedUrl.Host}:{parsedUrl.Port}", uuid.Value, info.Endpoint.Address);
+            var name = string.IsNullOrWhiteSpace(friendlyName) ?
+                    parsedUrl.OriginalString :
+                    // Some devices include their MAC addresses as part of their name.
+                    Regex.Replace(friendlyName, "([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})", string.Empty)
+                    .Replace("()", string.Empty, StringComparison.OrdinalIgnoreCase)
+                    .Replace("[]", string.Empty, StringComparison.OrdinalIgnoreCase)
+                    .Trim();
+
+            var deviceProperties = new PlayToDeviceInfo(name, $"{parsedUrl.Scheme}://{parsedUrl.Host}:{parsedUrl.Port}", uuid.Value, info.Endpoint.Address);
+
+            deviceProperties.FriendlyName = friendlyName;
 
             var model = document.Descendants(_ud.GetName("modelName")).FirstOrDefault();
             if (model != null)
@@ -673,6 +661,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     _logger.LogDebug("{Name}: Killing the timer.", Name);
                 }
 
+                // Attempt to unsubscribe - may not be possible.
                 await UnSubscribeAsync().ConfigureAwait(false);
 
                 lock (_timerLock)
@@ -1127,8 +1116,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             // Infinite loop until dispose.
             while (!_disposed)
             {
-                Profile.LastUsed = DateTime.UtcNow;
-
                 // Process items in the queue.
                 while (TryPop(out var action, defaultValue))
                 {
