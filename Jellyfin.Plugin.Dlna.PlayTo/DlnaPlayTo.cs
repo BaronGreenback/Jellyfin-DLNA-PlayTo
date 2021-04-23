@@ -52,6 +52,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
         private readonly IMediaSourceManager _mediaSourceManager;
         private readonly IMediaEncoder _mediaEncoder;
         private readonly INotificationManager _notificationManager;
+        private readonly INetworkManager _networkManager;
         private readonly SemaphoreSlim _sessionLock = new(1, 1);
         private readonly CancellationTokenSource _disposeCancellationTokenSource = new();
         private readonly List<PlayToDevice> _devices = new();
@@ -116,6 +117,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             _mediaSourceManager = mediaSourceManager;
             _mediaEncoder = mediaEncoder;
             _notificationManager = notificationManager;
+            _networkManager = networkManager;
 
             // Update from ssdp.xml
             var ssdp = _configurationManager.GetSsdpConfiguration();
@@ -128,9 +130,16 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                 _logger,
                 loggerFactory,
                 networkManager.GetInternalBindAddresses(),
-                networkManager);
+                networkManager,
+                ssdp.PermittedDevices);
 
             _locator.DeviceDiscovered += OnDeviceDiscoveryDeviceDiscovered;
+
+            if (!Configuration.UseNetworkDiscovery)
+            {
+                // See if there are any static devices.
+                AddStaticDevices();
+            }
 
             _configurationManager = configurationManager;
             _configurationManager.NamedConfigurationUpdating += SyncToConfiguration;
@@ -212,6 +221,26 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
         public async Task SendNotification(NotificationRequest notification)
         {
             await _notificationManager.SendNotification(notification, null, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        private void AddStaticDevices()
+        {
+            foreach (var location in Configuration.StaticDevices)
+            {
+                var deviceUrl = new Uri(location);
+                if (IPNetAddress.TryParse(deviceUrl.Host, out var ip, _networkManager.IpClassType))
+                {
+                    var properties = new Dictionary<string, string>();
+                    properties["LOCATION"] = location;
+                    var args = new DiscoveredSsdpDevice(DateTime.UtcNow, "ST", properties, new IPEndPoint(ip.Address, 0));
+
+                    OnDeviceDiscoveryDeviceDiscovered(this, args);
+                }
+                else
+                {
+                    _logger.LogError("Unable to determine ip address from location - {Location}", location);
+                }
+            }
         }
 
         /// <summary>
@@ -340,7 +369,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             var sessionInfo = _sessionManager.LogSessionActivity(
                 "DLNA PlayTo",
                 _appHost.ApplicationVersionString,
-                info.Usn,
+                deviceProperties.Uuid,
                 deviceProperties.Name,
                 info.Endpoint.Address.ToString(),
                 null);
@@ -415,7 +444,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             PlayToDevice.QueueInterval = config.QueueInterval;
             PlayToDevice.TimerInterval = config.TimerInterval;
             PlayToDevice.UserAgent = config.UserAgent;
-            config.SsdpTracingFilter = IPAddress.TryParse(config.SsdpTracingFilter, out var addr) ? addr.ToString() : string.Empty;
+            config.SsdpTracingFilter = ssdp.SsdpTracingFilter;
             _locator.Server.UdpPortRange = config.UdpPortRange;
             _locator.Server.SetTracingFilter(config.EnableSsdpTracing, config.SsdpTracingFilter);
             if (config.EnableSsdpTracing)
@@ -438,17 +467,19 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             }
 
             _locator.Interval = config.ClientNotificationInterval;
-            _locator.InitialInterval = config.ClientDiscoveryIntervalSeconds;
+            _locator.InitialInterval = config.UseNetworkDiscovery ? config.ClientDiscoveryIntervalSeconds : -1;
         }
 
         private void SyncToConfiguration(object? sender, ConfigurationUpdateEventArgs args)
         {
-            if (args.Key.Equals("ssdp"))
+            if (!args.Key.Equals("ssdp"))
             {
-                // Get the new properties.
-                args.NewConfiguration.CopyProperties(Configuration);
-                SaveConfiguration();
+                return;
             }
+
+            // Get the new properties.
+            args.NewConfiguration.CopyProperties(Configuration);
+            SaveConfiguration();
         }
     }
 }

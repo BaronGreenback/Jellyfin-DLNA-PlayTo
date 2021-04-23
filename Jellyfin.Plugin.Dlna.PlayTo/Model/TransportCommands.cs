@@ -180,12 +180,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Model
         {
             var serviceAction = new ServiceAction(container.GetValue(_svc! + "name"));
             var argumentList = serviceAction.ArgumentList;
-
-            foreach (var arg in container.Descendants(_svc! + "argument"))
-            {
-                argumentList.Add(ArgumentFromXml(arg));
-            }
-
+            argumentList.AddRange(from arg in container.Descendants(_svc! + "argument")
+                                  select ArgumentFromXml(arg));
             return serviceAction;
         }
 
@@ -226,11 +222,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Model
 
             if (element != null)
             {
-                allowedValueRange = new Dictionary<string, string>();
-                foreach (var child in element.Descendants())
-                {
-                    allowedValueRange.Add(child.Name.LocalName, child.Value);
-                }
+                allowedValueRange = element.Descendants().ToDictionary(child => child.Name.LocalName, child => child.Value);
             }
 
             var svt = container.GetValue(_svc! + "name");

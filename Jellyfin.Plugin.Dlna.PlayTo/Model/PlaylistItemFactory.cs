@@ -30,7 +30,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Model
             }
 
             var playlistItem = new PlaylistItem(
-                new StreamInfo()
+                new StreamInfo
                 {
                     ItemId = item.Id,
                     MediaType = DlnaProfileType.Photo,

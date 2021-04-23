@@ -186,10 +186,10 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             switch (streamInfo.MediaType)
             {
                 case DlnaProfileType.Audio:
-                    return Jellyfin.Plugin.Dlna.Model.ContentFeatureBuilder.BuildAudioHeader(
+                    return ContentFeatureBuilder.BuildAudioHeader(
                         profile,
                         streamInfo.Container,
-                        streamInfo.TargetAudioCodec[0],
+                        streamInfo.TargetAudioCodec.FirstOrDefault(),
                         streamInfo.TargetAudioBitrate,
                         streamInfo.TargetAudioSampleRate,
                         streamInfo.TargetAudioChannels,
@@ -200,11 +200,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                 case DlnaProfileType.Video:
                     {
-                        var list = Jellyfin.Plugin.Dlna.Model.ContentFeatureBuilder.BuildVideoHeader(
+                        var list = ContentFeatureBuilder.BuildVideoHeader(
                             profile,
                             streamInfo.Container,
-                            streamInfo.TargetVideoCodec[0],
-                            streamInfo.TargetAudioCodec[0],
+                            streamInfo.TargetVideoCodec.FirstOrDefault(),
+                            streamInfo.TargetAudioCodec.FirstOrDefault(),
                             streamInfo.TargetWidth,
                             streamInfo.TargetHeight,
                             streamInfo.TargetVideoBitDepth,
@@ -239,7 +239,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             {
                 _sessionManager.ReportSessionEnded(_session.Id);
                 _profileManager.DeleteProfile(_device.Profile.Id);
-                _= _device.DeviceUnavailable();
+                _ = _device.DeviceUnavailable();
             }
 #pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception ex)
@@ -671,15 +671,17 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// </summary>
         private void SendNextTrackMessage()
         {
-            if (_currentPlaylistIndex >= 0 && _currentPlaylistIndex < _playlist.Count - 1)
+            if (_currentPlaylistIndex < 0 || _currentPlaylistIndex >= _playlist.Count - 1)
             {
-                // The current playing item is indeed in the play list and we are not yet at the end of the playlist.
-                var nextItemIndex = _currentPlaylistIndex + 1;
-                var nextItem = _playlist[nextItemIndex];
-
-                // Send the SetNextAvTransport message.
-                _device.SetNextAvTransport(nextItem.StreamUrl!, GetDlnaHeaders(nextItem), nextItem.Didl);
+                return;
             }
+
+            // The current playing item is indeed in the play list and we are not yet at the end of the playlist.
+            var nextItemIndex = _currentPlaylistIndex + 1;
+            var nextItem = _playlist[nextItemIndex];
+
+            // Send the SetNextAvTransport message.
+            _device.SetNextAvTransport(nextItem.StreamUrl!, GetDlnaHeaders(nextItem), nextItem.Didl);
         }
 
         private void AddItemFromId(Guid id, ICollection<BaseItem> list)
@@ -998,10 +1000,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             /// Initializes a new instance of the <see cref="StreamParams"/> class.
             /// </summary>
             /// <param name="itemId">The <see cref="Guid"/>.</param>
-            private StreamParams(Guid itemId)
-            {
-                ItemId = itemId;
-            }
+            private StreamParams(Guid itemId) => ItemId = itemId;
 
             /// <summary>
             /// Gets the ItemId.
@@ -1063,7 +1062,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     return new StreamParams(Guid.Empty);
                 }
 
-                var request = new StreamParams(StreamParams.GetItemId(url));
+                var request = new StreamParams(GetItemId(url));
 
                 if (request.ItemId.Equals(Guid.Empty))
                 {

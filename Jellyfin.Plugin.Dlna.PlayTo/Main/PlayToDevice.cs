@@ -386,15 +386,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// </summary>
         public TimeSpan Position
         {
-            get
-            {
-                return _position.Add(_transportOffset);
-            }
-
-            private set
-            {
-                _position = value;
-            }
+            get => _position.Add(_transportOffset);
+            private set => _position = value;
         }
 
         /// <summary>
@@ -477,9 +470,10 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     .Replace("[]", string.Empty, StringComparison.OrdinalIgnoreCase)
                     .Trim();
 
-            var deviceProperties = new PlayToDeviceInfo(name, $"{parsedUrl.Scheme}://{parsedUrl.Host}:{parsedUrl.Port}", uuid.Value, info.Endpoint.Address);
-
-            deviceProperties.FriendlyName = friendlyName;
+            var deviceProperties = new PlayToDeviceInfo(name, $"{parsedUrl.Scheme}://{parsedUrl.Host}:{parsedUrl.Port}", uuid.Value, info.Endpoint.Address)
+            {
+                FriendlyName = friendlyName
+            };
 
             var model = document.Descendants(_ud.GetName("modelName")).FirstOrDefault();
             if (model != null)
@@ -796,11 +790,13 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="metadata">Media metadata.</param>
         public void SetNextAvTransport(Uri url, string headers, string metadata)
         {
-            if (IsPlaying)
+            if (!IsPlaying)
             {
-                var media = new MediaData(url, headers, metadata, (DlnaProfileType)_mediaType!, false);
-                QueueEvent(QueueCommands.QueueNext, media);
+                return;
             }
+
+            var media = new MediaData(url, headers, metadata, (DlnaProfileType)_mediaType!, false);
+            QueueEvent(QueueCommands.QueueNext, media);
         }
 
         /// <summary>
@@ -939,10 +935,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                         return doc;
                     }
-                    else
-                    {
-                        logger.LogError("Invalid xml response: <- {Url}\r\n{Reply:l}", url, reply);
-                    }
+
+                    logger.LogError("Invalid xml response: <- {Url}\r\n{Reply:l}", url, reply);
                 }
 
                 logger.LogDebug("Error: {Reason}", response.ReasonPhrase);
@@ -1382,7 +1376,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             catch (HttpRequestException ex)
             {
                 var msg = string.Format(
-                    "SendCommandAsync failed. {0}:-> {1}\r\nHeader\r\n{2:l}\r\nData\r\n{3:l}",
+                    "SendCommandAsync failed. {0}:-> {1}\r\nHeader\r\n{2:}\r\nData\r\n{3:}",
                     Name,
                     service.ControlUrl,
                     PrettyPrint(options.Headers),
@@ -1495,23 +1489,27 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 return true;
             }
 
-            if (result != null)
+            if (result == null)
             {
-                result.TryGetValue("faultstring", out var fault);
-                result.TryGetValue("errorCode", out var errorCode);
-                result.TryGetValue("errorDescription", out var errorDescription);
+                return false;
+            }
 
-                string msg = $"{Name} : Cmd : {actionCommand}. Fault: {fault}. Code: {errorCode}. {errorDescription}";
-                await NotifyUser(msg).ConfigureAwait(false);
-                _logger.LogError(msg);
+            result.TryGetValue("faultstring", out var fault);
+            result.TryGetValue("errorCode", out var errorCode);
+            result.TryGetValue("errorDescription", out var errorDescription);
 
-                if (Tracing)
-                {
-                    foreach (var entry in result)
-                    {
-                        _logger.LogDebug("{Name}: {Key} = {Value:l}", Name, entry.Key, entry.Value);
-                    }
-                }
+            string msg = $"{Name} : Cmd : {actionCommand}. Fault: {fault}. Code: {errorCode}. {errorDescription}";
+            await NotifyUser(msg).ConfigureAwait(false);
+            _logger.LogError(msg);
+
+            if (!Tracing)
+            {
+                return false;
+            }
+
+            foreach (KeyValuePair<string, string> entry in result)
+            {
+                _logger.LogDebug("{Name}: {Key} = {Value:l}", Name, entry.Key, entry.Value);
             }
 
             return false;
@@ -2502,8 +2500,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
         private record ValueRange
         {
-            public double FivePoints { get; set; }
-
             public double Range { get; set; } = 100;
 
             public int Min { get; set; }

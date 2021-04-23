@@ -1,8 +1,4 @@
 using System;
-using System.Text.Json.Serialization;
-using System.Xml.Serialization;
-using Jellyfin.Plugin.Dlna.Configuration;
-using MediaBrowser.Common.Configuration;
 using MediaBrowser.Model.Plugins;
 
 namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
@@ -72,5 +68,15 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         /// Gets or sets the range of UDP ports to use in communications as well as 1900.
         /// </summary>
         public string UdpPortRange { get; set; } = "49152-65535";
+
+        /// <summary>
+        /// Gets or sets a value indicating whether network discovery should be used to detect devices.
+        /// </summary>
+        public bool UseNetworkDiscovery { get; set; }
+
+        /// <summary>
+        /// Gets or sets the list of devices which are not permitted to connect.
+        /// </summary>
+        public string[] StaticDevices { get; set; } = Array.Empty<string>();
     }
 }
