@@ -289,26 +289,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         public static string FriendlyName { get; set; } = "Jellyfin";
 
         /// <summary>
-        /// Gets the Render Control service.
-        /// </summary>
-        private DeviceService? RenderControl => Services[(int)ServiceType.RenderControl];
-
-        /// <summary>
-        /// Gets the services the device supports.
-        /// </summary>
-        private DeviceService?[] Services { get; }
-
-        //// <summary>
-        //// Gets the Connection Manager service.
-        //// </summary>
-        // public DeviceService? ConnectionManager => Services[(int)ServiceType.ConnectionManager];
-
-        /// <summary>
-        /// Gets the AVTransport service.
-        /// </summary>
-        private DeviceService? AvTransport => Services[(int)ServiceType.AvTransport];
-
-        /// <summary>
         /// Gets the device's Uuid.
         /// </summary>
         public string Uuid { get; }
@@ -401,11 +381,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         public bool IsPaused => TransportState is TransportState.Paused or TransportState.Paused_Playback;
 
         /// <summary>
-        /// Gets a value indicating whether IsStopped.
-        /// </summary>
-        private bool IsStopped => TransportState == TransportState.Stopped;
-
-        /// <summary>
         /// Gets or sets the OnDeviceUnavailable.
         /// </summary>
         public Action? OnDeviceUnavailable { get; set; }
@@ -419,6 +394,26 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// Gets a value indicating whether trace information should be redirected to the logs.
         /// </summary>
         private static bool Tracing => DlnaPlayTo.Instance!.Configuration.EnablePlayToDebug;
+
+        /// <summary>
+        /// Gets the Render Control service.
+        /// </summary>
+        private DeviceService? RenderControl => Services[(int)ServiceType.RenderControl];
+
+        /// <summary>
+        /// Gets the services the device supports.
+        /// </summary>
+        private DeviceService?[] Services { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether IsStopped.
+        /// </summary>
+        private bool IsStopped => TransportState == TransportState.Stopped;
+
+        /// <summary>
+        /// Gets the AVTransport service.
+        /// </summary>
+        private DeviceService? AvTransport => Services[(int)ServiceType.AvTransport];
 
         /// <summary>
         /// Gets or sets the TransportState.
@@ -766,10 +761,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="headers">Headers.</param>
         /// <param name="metadata">Media metadata.</param>
         /// <param name="immediate">Set to true to effect an immediate change.</param>
+        /// <param name="position">Position to seek after change.</param>
         /// <returns>Task.</returns>
-        public async Task SetAvTransport(DlnaProfileType mediaType, bool resetPlay, Uri url, string headers, string metadata, bool immediate)
+        public async Task SetAvTransport(DlnaProfileType mediaType, bool resetPlay, Uri url, string headers, string metadata, bool immediate, long position)
         {
-            var media = new MediaData(url, headers, metadata, mediaType, resetPlay);
+            var media = new MediaData(url, headers, metadata, mediaType, resetPlay, position);
             if (immediate)
             {
                 await QueueMedia(media).ConfigureAwait(false);
@@ -780,6 +776,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
             // Not all devices auto-play after loading media (eg. Hisense)
             QueueEvent(QueueCommands.Play);
+
+            if (position != 0)
+            {
+                QueueEvent(QueueCommands.Seek, position);
+            }
         }
 
         /// <summary>
@@ -795,7 +796,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 return;
             }
 
-            var media = new MediaData(url, headers, metadata, (DlnaProfileType)_mediaType!, false);
+            var media = new MediaData(url, headers, metadata, (DlnaProfileType)_mediaType!, false, 0);
             QueueEvent(QueueCommands.QueueNext, media);
         }
 
@@ -806,26 +807,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         {
             Dispose(true);
             GC.SuppressFinalize(this);
-        }
-
-        /// <summary>
-        /// Override this method and dispose any objects you own the lifetime of if disposing is true.
-        /// </summary>
-        /// <param name="disposing">True if managed objects should be disposed, if false, only unmanaged resources should be released.</param>
-        private void Dispose(bool disposing)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            if (disposing)
-            {
-                _timer?.Dispose();
-                DlnaPlayTo.Instance!.DlnaEvents -= ProcessSubscriptionEvent;
-            }
-
-            _disposed = true;
         }
 
         /// <summary>
@@ -1254,7 +1235,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     }
                 }
 
-                if (settings.ResetPlayback)
+                if (settings.ResetPlayback || settings.Position != TimeSpan.Zero)
                 {
                     // Restart from the beginning.
                     if (Tracing)
@@ -1262,7 +1243,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                         _logger.LogDebug("{Name}: Resetting playback position.", Name);
                     }
 
-                    bool success = await SendSeekRequest(TimeSpan.Zero).ConfigureAwait(false);
+                    bool success = await SendSeekRequest(settings.Position).ConfigureAwait(false);
                     if (success)
                     {
                         // Save progress and restart time.
@@ -1298,7 +1279,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
             try
             {
-                await DlnaPlayTo.Instance!.SendNotification(notification).ConfigureAwait(false); // TODO: fix this
+                await DlnaPlayTo.Instance!.SendNotification(notification).ConfigureAwait(false);
             }
 #pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception ex)
@@ -2297,7 +2278,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
             // Update what is playing.
             _mediaPlaying = settings.Url;
-            _mediaType = settings.MediaType; // TODO: is this ever set to null?
+            _mediaType = settings.MediaType;
             RestartTimer(Now);
 
             return true;
@@ -2429,6 +2410,26 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         }
 
         /// <summary>
+        /// Override this method and dispose any objects you own the lifetime of if disposing is true.
+        /// </summary>
+        /// <param name="disposing">True if managed objects should be disposed, if false, only unmanaged resources should be released.</param>
+        private void Dispose(bool disposing)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                _timer?.Dispose();
+                DlnaPlayTo.Instance!.DlnaEvents -= ProcessSubscriptionEvent;
+            }
+
+            _disposed = true;
+        }
+
+        /// <summary>
         /// Updates the media info, firing events.
         /// </summary>
         /// <param name="mediaInfo">The mediaInfo<see cref="UBaseObject"/>.</param>
@@ -2516,13 +2517,14 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
         private class MediaData
         {
-            public MediaData(Uri uri, string headers, string metadata, DlnaProfileType mediaType, bool resetPlayBack)
+            public MediaData(Uri uri, string headers, string metadata, DlnaProfileType mediaType, bool resetPlayBack, long position)
             {
                 Url = uri.ToString();
                 Headers = headers;
                 MediaType = mediaType;
                 ResetPlayback = resetPlayBack;
                 Metadata = metadata;
+                Position = position == 0 ? TimeSpan.Zero : TimeSpan.FromTicks(position);
             }
 
             /// <summary>
@@ -2549,6 +2551,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             /// Gets the media type of the url.
             /// </summary>
             public DlnaProfileType MediaType { get; }
+
+            /// <summary>
+            /// Gets the position of the playback.
+            /// </summary>
+            public TimeSpan Position { get; }
         }
     }
 }

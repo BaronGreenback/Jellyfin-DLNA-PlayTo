@@ -21,7 +21,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.EventArgs
         /// <summary>
         /// Gets the previous media.
         /// </summary>
-        public UBaseObject? OldMediaInfo { get; }
+        public UBaseObject OldMediaInfo { get; }
 
         /// <summary>
         /// Gets the current media.

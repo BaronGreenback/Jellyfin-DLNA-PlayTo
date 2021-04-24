@@ -283,7 +283,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 if (streamInfo.Item != null)
                 {
                     var positionTicks = GetProgressPositionTicks(streamInfo);
-
                     await ReportPlaybackStopped(streamInfo, positionTicks).ConfigureAwait(false);
                 }
 
@@ -315,16 +314,13 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             try
             {
                 var streamInfo = StreamParams.ParseFromUrl(e.MediaInfo.Url, _libraryManager, _mediaSourceManager);
-
                 if (streamInfo.Item == null)
                 {
                     return;
                 }
 
                 var positionTicks = GetProgressPositionTicks(streamInfo);
-
                 await ReportPlaybackStopped(streamInfo, positionTicks).ConfigureAwait(false);
-
                 var mediaSource = await streamInfo.GetMediaSource(CancellationToken.None).ConfigureAwait(false);
 
                 var duration = mediaSource == null ?
@@ -469,10 +465,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 AudioStreamIndex = info.AudioStreamIndex,
                 SubtitleStreamIndex = info.SubtitleStreamIndex,
                 VolumeLevel = _device.Volume,
-
-                // TODO
-                CanSeek = true,
-
+                CanSeek = true, // TODO
                 PlayMethod = info.IsDirectStream ? PlayMethod.DirectStream : PlayMethod.Transcode
             };
         }
@@ -526,11 +519,30 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 items = items.GetRange(startIndex, len);
             }
 
-            var playlist = new PlaylistItem[len];
-            playlist[0] = CreatePlaylistItem(items[0], user, command.StartPositionTicks ?? 0, command.MediaSourceId, command.AudioStreamIndex, command.SubtitleStreamIndex);
-            for (int i = 1; i < len; i++)
+            var playlist = new List<PlaylistItem>(len);
+            PlaylistItem? item;
+
+            for (int i = 0; i < len; i++)
             {
-                playlist[i] = CreatePlaylistItem(items[i], user, 0, null, null, null);
+                if (playlist.Count == 0)
+                {
+                    item = CreatePlaylistItem(items[0], user, command.StartPositionTicks ?? 0, command.MediaSourceId, command.AudioStreamIndex, command.SubtitleStreamIndex);
+                    if (item == null)
+                    {
+                        // skip through any without stream urls.
+                        continue;
+                    }
+                }
+                else
+                {
+                    item = CreatePlaylistItem(items[i], user, 0, null, null, null);
+                    if (item == null)
+                    {
+                        continue;
+                    }
+                }
+
+                playlist.Add(item);
             }
 
             _logger.LogDebug("{Name} - Playlist created", _session.DeviceName);
@@ -542,7 +554,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     // Reset playlist and re-add tracks.
                     _playlist.Clear();
                     _playlist.AddRange(playlist);
-                    _currentPlaylistIndex = playlist.Length > 0 ? 0 : -1;
+                    _currentPlaylistIndex = playlist.Count > 0 ? 0 : -1;
                     break;
 
                 case PlayCommand.PlayInstantMix:
@@ -650,19 +662,15 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 {
                     var user = !_session.UserId.Equals(Guid.Empty) ? _userManager.GetUserById(_session.UserId) : null;
                     var newItem = CreatePlaylistItem(info.Item, user, newPosition, info.MediaSourceId, info.AudioStreamIndex, info.SubtitleStreamIndex);
-                    if (newItem.StreamUrl == null)
+                    if (newItem == null)
                     {
                         _logger.LogError("Unable to seek on null stream.");
                         return;
                     }
 
-                    await _device.SetAvTransport(newItem.StreamInfo.MediaType, true, newItem.StreamUrl, GetDlnaHeaders(newItem), newItem.Didl, true).ConfigureAwait(false);
+                    await _device.SetAvTransport(newItem.StreamInfo.MediaType, true, newItem.StreamUrl!, GetDlnaHeaders(newItem), newItem.Didl, true, newPosition).ConfigureAwait(false);
                     SendNextTrackMessage();
-
-                    return;
                 }
-
-                await SeekAfterTransportChange(newPosition, CancellationToken.None).ConfigureAwait(false);
             }
         }
 
@@ -693,7 +701,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             }
         }
 
-        private PlaylistItem CreatePlaylistItem(
+        private PlaylistItem? CreatePlaylistItem(
             BaseItem item,
             User? user,
             long startPostionTicks,
@@ -706,10 +714,14 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 : Array.Empty<MediaSourceInfo>();
 
             var playlistItem = GetPlaylistItem(item, mediaSources, _device.Profile, _session.DeviceId, mediaSourceId, audioStreamIndex, subtitleStreamIndex);
-            playlistItem.StreamInfo.StartPositionTicks = startPostionTicks;
-
             playlistItem.StreamUrl = DidlBuilder.NormalizeDlnaMediaUrl(playlistItem.StreamInfo.ToUrl(_serverAddress, _accessToken));
 
+            if (playlistItem.StreamUrl == null)
+            {
+                return null;
+            }
+
+            playlistItem.StreamInfo.StartPositionTicks = startPostionTicks;
             var itemXml = new DidlBuilder(
                 _device.Profile,
                 user,
@@ -796,14 +808,17 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
             if (currentitem.StreamUrl != null)
             {
-                await _device.SetAvTransport(currentitem.StreamInfo.MediaType, true, currentitem.StreamUrl, GetDlnaHeaders(currentitem), currentitem.Didl, index > 0).ConfigureAwait(false);
-                SendNextTrackMessage();
-            }
+                var streamInfo = currentitem.StreamInfo;
+                await _device.SetAvTransport(
+                    currentitem.StreamInfo.MediaType,
+                    true,
+                    currentitem.StreamUrl,
+                    GetDlnaHeaders(currentitem),
+                    currentitem.Didl,
+                    index > 0,
+                    streamInfo.StartPositionTicks > 0 && streamInfo.IsDirectStream ? streamInfo.StartPositionTicks : 0).ConfigureAwait(false);
 
-            var streamInfo = currentitem.StreamInfo;
-            if (streamInfo.StartPositionTicks > 0 && streamInfo.IsDirectStream)
-            {
-                await SeekAfterTransportChange(streamInfo.StartPositionTicks, CancellationToken.None).ConfigureAwait(false);
+                SendNextTrackMessage();
             }
         }
 
@@ -912,6 +927,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                     var user = !_session.UserId.Equals(Guid.Empty) ? _userManager.GetUserById(_session.UserId) : null;
                     var newItem = CreatePlaylistItem(info.Item, user, newPosition, info.MediaSourceId, newIndex, info.SubtitleStreamIndex);
+                    if (newItem == null)
+                    {
+                        _logger.LogError("Unable to seek on null stream.");
+                        return;
+                    }
 
                     bool seekAfter = newItem.StreamInfo.IsDirectStream;
 
@@ -922,13 +942,15 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                         return;
                     }
 
-                    await _device.SetAvTransport(newItem.StreamInfo.MediaType, !seekAfter, newItem.StreamUrl, GetDlnaHeaders(newItem), newItem.Didl, true).ConfigureAwait(false);
+                    await _device.SetAvTransport(
+                        newItem.StreamInfo.MediaType,
+                        !seekAfter,
+                        newItem.StreamUrl,
+                        GetDlnaHeaders(newItem),
+                        newItem.Didl,
+                        true,
+                        seekAfter ? newPosition : 0).ConfigureAwait(false);
                     SendNextTrackMessage();
-
-                    if (seekAfter)
-                    {
-                        await SeekAfterTransportChange(newPosition, CancellationToken.None).ConfigureAwait(false);
-                    }
                 }
             }
         }
@@ -947,46 +969,26 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                     var user = !_session.UserId.Equals(Guid.Empty) ? _userManager.GetUserById(_session.UserId) : null;
                     var newItem = CreatePlaylistItem(info.Item, user, newPosition, info.MediaSourceId, info.AudioStreamIndex, newIndex);
-
-                    bool seekAfter = newItem.StreamInfo.IsDirectStream && newPosition > 0;
-
-                    if (newItem.StreamUrl == null)
+                    if (newItem == null)
                     {
                         _logger.LogError("Unable to set subtitle index on null stream.");
                         return;
                     }
 
+                    bool seekAfter = newItem.StreamInfo.IsDirectStream && newPosition > 0;
+
                     // Pass our intentions to the device, so that it doesn't restart at the beginning, only to then seek.
-                    await _device.SetAvTransport(newItem.StreamInfo.MediaType, !seekAfter, newItem.StreamUrl, GetDlnaHeaders(newItem), newItem.Didl, true).ConfigureAwait(false);
+                    await _device.SetAvTransport(
+                        newItem.StreamInfo.MediaType,
+                        !seekAfter,
+                        newItem.StreamUrl!,
+                        GetDlnaHeaders(newItem),
+                        newItem.Didl,
+                        true,
+                        seekAfter ? newPosition : 0).ConfigureAwait(false);
                     SendNextTrackMessage();
-
-                    if (seekAfter)
-                    {
-                        await SeekAfterTransportChange(newPosition, CancellationToken.None).ConfigureAwait(false);
-                    }
                 }
             }
-        }
-
-        private async Task SeekAfterTransportChange(long positionTicks, CancellationToken cancellationToken)
-        {
-            const int MaxWait = 15000000;
-            const int Interval = 500;
-
-            var currentWait = 0;
-
-            while (!_device.IsPlaying && currentWait < MaxWait)
-            {
-                await Task.Delay(Interval, cancellationToken).ConfigureAwait(false);
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                currentWait += Interval;
-            }
-
-            await _device.Seek(TimeSpan.FromTicks(positionTicks)).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1077,7 +1079,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                 var query = url[(index + 1)..];
                 Dictionary<string, string> values = QueryHelpers.ParseQuery(query).ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
-
                 request.MediaSourceId = values.GetValueOrDefault("MediaSourceId");
                 request.LiveStreamId = values.GetValueOrDefault("LiveStreamId");
                 request.IsDirectStream = string.Equals("true", values.GetValueOrDefault("Static"), StringComparison.OrdinalIgnoreCase);
@@ -1086,7 +1087,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 request.StartPositionTicks = GetLongValue(values, "StartPositionTicks");
                 request.Item = libraryManager.GetItemById(request.ItemId);
                 request.MediaSourceManager = mediaSourceManager;
-
                 return request;
             }
 
@@ -1120,13 +1120,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             /// </summary>
             /// <param name="url">Url to parse.</param>
             /// <returns>A <see cref="Guid"/>, or Guid.Empty if not found.</returns>
-            private static Guid GetItemId(string? url)
+            private static Guid GetItemId(string url)
             {
-                if (string.IsNullOrEmpty(url))
-                {
-                    throw new ArgumentNullException(nameof(url));
-                }
-
                 var parts = url.Split('/');
 
                 for (var i = 0; i < parts.Length - 1; i++)

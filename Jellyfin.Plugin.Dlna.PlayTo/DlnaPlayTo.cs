@@ -119,19 +119,17 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             _notificationManager = notificationManager;
             _networkManager = networkManager;
 
-            // Update from ssdp.xml
-            var ssdp = _configurationManager.GetSsdpConfiguration();
-            Configuration.CopyProperties(ssdp);
-            SaveConfiguration();
-
             _logger.LogDebug("DLNA PlayTo: Starting Device Discovery.");
             _locator = new SsdpLocator(
                 _configurationManager,
                 _logger,
                 loggerFactory,
                 networkManager.GetInternalBindAddresses(),
-                networkManager,
-                ssdp.PermittedDevices);
+                networkManager);
+
+            // Update from ssdp.xml
+            Configuration.CopyProperties(SsdpServer.Instance.Configuration);
+            SaveConfiguration();
 
             _locator.DeviceDiscovered += OnDeviceDiscoveryDeviceDiscovered;
 
@@ -142,8 +140,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             }
 
             _configurationManager = configurationManager;
-            _configurationManager.NamedConfigurationUpdating += SyncToConfiguration;
-            ConfigurationChanged += SyncWithConfiguration;
+            _configurationManager.NamedConfigurationUpdating += SyncWithSsdp;
+            ConfigurationChanged += SyncWithSsdp;
 
             _locator.Start();
 
@@ -230,9 +228,14 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                 var deviceUrl = new Uri(location);
                 if (IPNetAddress.TryParse(deviceUrl.Host, out var ip, _networkManager.IpClassType))
                 {
-                    var properties = new Dictionary<string, string>();
-                    properties["LOCATION"] = location;
-                    var args = new DiscoveredSsdpDevice(DateTime.UtcNow, "ST", properties, new IPEndPoint(ip.Address, 0));
+                    var args = new DiscoveredSsdpDevice(
+                        DateTime.UtcNow,
+                        "ST",
+                        new Dictionary<string, string>
+                        {
+                            ["LOCATION"] = location
+                        },
+                        new IPEndPoint(ip.Address, 0));
 
                     OnDeviceDiscoveryDeviceDiscovered(this, args);
                 }
@@ -256,8 +259,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                 {
                     _logger.LogDebug("Disposing instance.");
 
-                    _configurationManager.NamedConfigurationUpdating -= SyncToConfiguration;
-                    ConfigurationChanged -= SyncWithConfiguration;
+                    _configurationManager.NamedConfigurationUpdating -= SyncWithSsdp;
+                    ConfigurationChanged -= SyncWithSsdp;
 
                     _locator.DeviceDiscovered -= OnDeviceDiscoveryDeviceDiscovered;
                     _locator.Dispose();
@@ -431,30 +434,53 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             _locator.SlowDown();
         }
 
-        private void SyncWithConfiguration(object? sender, BasePluginConfiguration configuration)
+        private void SyncWithSsdp(object? sender, ConfigurationUpdateEventArgs args)
+        {
+            if (!args.Key.Equals("ssdp"))
+            {
+                return;
+            }
+
+            // Get the new properties.
+            args.NewConfiguration.CopyProperties(Configuration);
+            SaveConfiguration();
+        }
+
+        private void SyncWithSsdp(object? sender, BasePluginConfiguration configuration)
         {
             var config = (PlayToConfiguration)configuration;
-
-            var ssdp = _configurationManager.GetSsdpConfiguration();
-            config.CopyProperties(ssdp);
-            _configurationManager.SaveSsdpConfiguration();
 
             PlayToDevice.CtsTimeout = config.CommunicationTimeout;
             PlayToDevice.FriendlyName = config.FriendlyName;
             PlayToDevice.QueueInterval = config.QueueInterval;
             PlayToDevice.TimerInterval = config.TimerInterval;
             PlayToDevice.UserAgent = config.UserAgent;
-            config.SsdpTracingFilter = ssdp.SsdpTracingFilter;
             _locator.Server.UdpPortRange = config.UdpPortRange;
-            _locator.Server.SetTracingFilter(config.EnableSsdpTracing, config.SsdpTracingFilter);
+            if (!string.IsNullOrEmpty(config.SsdpTracingFilter))
+            {
+                if (IPAddress.TryParse(config.SsdpTracingFilter, out var addr))
+                {
+                    config.SsdpTracingFilter = addr.ToString();
+                }
+                else
+                {
+                    _logger.LogError("SsdpTracingFilter '{Filter}' is invalid. ", config.SsdpTracingFilter);
+                }
+            }
+
             if (config.EnableSsdpTracing)
             {
-                _logger.LogDebug("Setting SSDP tracing to : {Filter}", config.SsdpTracingFilter);
+                _logger.LogInformation("Setting SSDP tracing to : {Filter}", config.SsdpTracingFilter);
             }
             else
             {
-                _logger.LogDebug("SSDP Logging disabled.");
+                _logger.LogInformation("SSDP Logging disabled.");
             }
+
+            config.CopyProperties(SsdpServer.Instance.Configuration);
+            SsdpServer.Instance.SaveConfiguration();
+
+            _locator.Server.SetTracingFilter(config.EnableSsdpTracing, config.SsdpTracingFilter);
 
             if (config.ClientDiscoveryIntervalSeconds <= 0)
             {
@@ -468,18 +494,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
 
             _locator.Interval = config.ClientNotificationInterval;
             _locator.InitialInterval = config.UseNetworkDiscovery ? config.ClientDiscoveryIntervalSeconds : -1;
-        }
-
-        private void SyncToConfiguration(object? sender, ConfigurationUpdateEventArgs args)
-        {
-            if (!args.Key.Equals("ssdp"))
-            {
-                return;
-            }
-
-            // Get the new properties.
-            args.NewConfiguration.CopyProperties(Configuration);
-            SaveConfiguration();
         }
     }
 }
