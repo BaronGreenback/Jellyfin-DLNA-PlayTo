@@ -75,7 +75,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         public bool UseNetworkDiscovery { get; set; }
 
         /// <summary>
-        /// Gets or sets the list of devices which are not permitted to connect.
+        /// Gets or sets the list of devices which are static.
         /// </summary>
         public string[] StaticDevices { get; set; } = Array.Empty<string>();
     }
