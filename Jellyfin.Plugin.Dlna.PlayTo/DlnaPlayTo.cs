@@ -482,16 +482,12 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
 
             _locator.Server.SetTracingFilter(config.EnableSsdpTracing, config.SsdpTracingFilter);
 
-            if (config.ClientDiscoveryIntervalSeconds <= 0)
-            {
-                config.ClientDiscoveryIntervalSeconds = 15;
-            }
-
-            if (config.ClientNotificationInterval <= 0)
-            {
-                config.ClientNotificationInterval = 1800;
-            }
-
+            config.ClientDiscoveryIntervalSeconds = Maths.Clamp(config.ClientDiscoveryIntervalSeconds, 4, 1500);
+            config.ClientNotificationInterval = Maths.Clamp(config.ClientNotificationInterval, 10, 60000);
+            config.CommunicationTimeout = Maths.Clamp(config.CommunicationTimeout, 8000, 60000);
+            config.TimerInterval = Maths.Clamp(config.TimerInterval, 0, 1200000);            
+            config.QueueInterval = Maths.Clamp(config.QueueInterval, 0, 60000);
+            
             _locator.Interval = config.ClientNotificationInterval;
             _locator.InitialInterval = config.UseNetworkDiscovery ? config.ClientDiscoveryIntervalSeconds : -1;
         }
