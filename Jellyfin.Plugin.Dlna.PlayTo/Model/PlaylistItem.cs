@@ -23,7 +23,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Model
         /// <summary>
         /// Gets or sets the stream's Url.
         /// </summary>
-        public Uri? StreamUrl { get; set; }
+        public string? StreamUrl { get; set; }
 
         /// <summary>
         /// Gets or sets the Didl xml.

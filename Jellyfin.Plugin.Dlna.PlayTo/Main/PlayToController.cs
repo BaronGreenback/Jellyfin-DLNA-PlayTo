@@ -238,7 +238,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             try
             {
                 _sessionManager.ReportSessionEnded(_session.Id);
-                _profileManager.DeleteProfile(_device.Profile.Id);
+                if (!string.IsNullOrEmpty(_device.Profile.Id))
+                {
+                    _profileManager.DeleteProfile(_device.Profile.Id);
+                }
+
                 _ = _device.DeviceUnavailable();
             }
 #pragma warning disable CA1031 // Do not catch general exception types
@@ -714,7 +718,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 : Array.Empty<MediaSourceInfo>();
 
             var playlistItem = GetPlaylistItem(item, mediaSources, _device.Profile, _session.DeviceId, mediaSourceId, audioStreamIndex, subtitleStreamIndex);
-            playlistItem.StreamUrl = DidlBuilder.NormalizeDlnaMediaUrl(playlistItem.StreamInfo.ToUrl(_serverAddress, _accessToken));
+            playlistItem.StreamUrl = playlistItem.StreamInfo.ToUrl(_serverAddress, _accessToken, "&dlna=true");
 
             if (playlistItem.StreamUrl == null)
             {

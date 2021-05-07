@@ -763,7 +763,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="immediate">Set to true to effect an immediate change.</param>
         /// <param name="position">Position to seek after change.</param>
         /// <returns>Task.</returns>
-        public async Task SetAvTransport(DlnaProfileType mediaType, bool resetPlay, Uri url, string headers, string metadata, bool immediate, long position)
+        public async Task SetAvTransport(DlnaProfileType mediaType, bool resetPlay, string url, string headers, string metadata, bool immediate, long position)
         {
             var media = new MediaData(url, headers, metadata, mediaType, resetPlay, position);
             if (immediate)
@@ -789,7 +789,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="url">Url of media.</param>
         /// <param name="headers">Headers.</param>
         /// <param name="metadata">Media metadata.</param>
-        public void SetNextAvTransport(Uri url, string headers, string metadata)
+        public void SetNextAvTransport(string url, string headers, string metadata)
         {
             if (!IsPlaying)
             {
@@ -2517,9 +2517,9 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
         private class MediaData
         {
-            public MediaData(Uri uri, string headers, string metadata, DlnaProfileType mediaType, bool resetPlayBack, long position)
+            public MediaData(string uri, string headers, string metadata, DlnaProfileType mediaType, bool resetPlayBack, long position)
             {
-                Url = uri.ToString();
+                Url = uri;
                 Headers = headers;
                 MediaType = mediaType;
                 ResetPlayback = resetPlayBack;

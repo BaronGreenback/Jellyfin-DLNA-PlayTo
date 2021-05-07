@@ -30,12 +30,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Model
             }
 
             var playlistItem = new PlaylistItem(
-                new StreamInfo
-                {
-                    ItemId = item.Id,
-                    MediaType = DlnaProfileType.Photo,
-                    DeviceProfile = profile
-                },
+                new StreamInfo(item.Id, DlnaProfileType.Photo, profile),
                 profile);
 
             var directPlay = profile.DirectPlayProfiles

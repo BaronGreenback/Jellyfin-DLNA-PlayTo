@@ -59,6 +59,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
         private readonly SsdpLocator _locator;
         private readonly IDlnaProfileManager _profileManager;
         private bool _disposed;
+        private bool _updating;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DlnaPlayTo"/> class.
@@ -436,60 +437,68 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
 
         private void SyncWithSsdp(object? sender, ConfigurationUpdateEventArgs args)
         {
-            if (!args.Key.Equals("ssdp"))
+            if (_updating || !args.Key.Equals("ssdp"))
             {
                 return;
             }
 
             // Get the new properties.
             args.NewConfiguration.CopyProperties(Configuration);
-            SaveConfiguration();
+            SaveConfiguration(Configuration);
         }
 
         private void SyncWithSsdp(object? sender, BasePluginConfiguration configuration)
         {
-            var config = (PlayToConfiguration)configuration;
-
-            PlayToDevice.CtsTimeout = config.CommunicationTimeout;
-            PlayToDevice.FriendlyName = config.FriendlyName;
-            PlayToDevice.QueueInterval = config.QueueInterval;
-            PlayToDevice.TimerInterval = config.TimerInterval;
-            PlayToDevice.UserAgent = config.UserAgent;
-            _locator.Server.UdpPortRange = config.UdpPortRange;
-            if (!string.IsNullOrEmpty(config.SsdpTracingFilter))
+            _updating = true;
+            try
             {
-                if (IPAddress.TryParse(config.SsdpTracingFilter, out var addr))
+                var config = (PlayToConfiguration)configuration;
+
+                PlayToDevice.CtsTimeout = config.CommunicationTimeout;
+                PlayToDevice.FriendlyName = config.FriendlyName;
+                PlayToDevice.QueueInterval = config.QueueInterval;
+                PlayToDevice.TimerInterval = config.TimerInterval;
+                PlayToDevice.UserAgent = config.UserAgent;
+                _locator.Server.UdpPortRange = config.UdpPortRange;
+                if (!string.IsNullOrEmpty(config.SsdpTracingFilter))
                 {
-                    config.SsdpTracingFilter = addr.ToString();
+                    if (IPAddress.TryParse(config.SsdpTracingFilter, out var addr))
+                    {
+                        config.SsdpTracingFilter = addr.ToString();
+                    }
+                    else
+                    {
+                        _logger.LogError("SsdpTracingFilter '{Filter}' is invalid. ", config.SsdpTracingFilter);
+                    }
+                }
+
+                if (config.EnableSsdpTracing)
+                {
+                    _logger.LogInformation("Setting SSDP tracing to : {Filter}", config.SsdpTracingFilter);
                 }
                 else
                 {
-                    _logger.LogError("SsdpTracingFilter '{Filter}' is invalid. ", config.SsdpTracingFilter);
+                    _logger.LogInformation("SSDP tracing disabled.");
                 }
-            }
 
-            if (config.EnableSsdpTracing)
+                config.CopyProperties(SsdpServer.Instance.Configuration);
+                SsdpServer.Instance.SaveConfiguration();
+
+                _locator.Server.SetTracingFilter(config.EnableSsdpTracing, config.SsdpTracingFilter);
+
+                config.ClientDiscoveryIntervalSeconds = Maths.Clamp(config.ClientDiscoveryIntervalSeconds, 4, 1500);
+                config.ClientNotificationInterval = Maths.Clamp(config.ClientNotificationInterval, 10, 60000);
+                config.CommunicationTimeout = Maths.Clamp(config.CommunicationTimeout, 8000, 60000);
+                config.TimerInterval = Maths.Clamp(config.TimerInterval, 0, 1200000);
+                config.QueueInterval = Maths.Clamp(config.QueueInterval, 0, 60000);
+
+                _locator.Interval = config.ClientNotificationInterval;
+                _locator.InitialInterval = config.UseNetworkDiscovery ? config.ClientDiscoveryIntervalSeconds : -1;
+            }
+            finally
             {
-                _logger.LogInformation("Setting SSDP tracing to : {Filter}", config.SsdpTracingFilter);
+                _updating = false;
             }
-            else
-            {
-                _logger.LogInformation("SSDP Logging disabled.");
-            }
-
-            config.CopyProperties(SsdpServer.Instance.Configuration);
-            SsdpServer.Instance.SaveConfiguration();
-
-            _locator.Server.SetTracingFilter(config.EnableSsdpTracing, config.SsdpTracingFilter);
-
-            config.ClientDiscoveryIntervalSeconds = Maths.Clamp(config.ClientDiscoveryIntervalSeconds, 4, 1500);
-            config.ClientNotificationInterval = Maths.Clamp(config.ClientNotificationInterval, 10, 60000);
-            config.CommunicationTimeout = Maths.Clamp(config.CommunicationTimeout, 8000, 60000);
-            config.TimerInterval = Maths.Clamp(config.TimerInterval, 0, 1200000);            
-            config.QueueInterval = Maths.Clamp(config.QueueInterval, 0, 60000);
-            
-            _locator.Interval = config.ClientNotificationInterval;
-            _locator.InitialInterval = config.UseNetworkDiscovery ? config.ClientDiscoveryIntervalSeconds : -1;
         }
     }
 }
