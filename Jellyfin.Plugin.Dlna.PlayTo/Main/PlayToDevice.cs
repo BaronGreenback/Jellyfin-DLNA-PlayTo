@@ -241,6 +241,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             {
                 svc?.Normalise(playToDeviceInfo.BaseUrl);
             }
+
+            BaseUrl = playToDeviceInfo.BaseUrl;
         }
 
         /// <summary>
@@ -307,6 +309,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// Gets the current media information.
         /// </summary>
         public UBaseObject? CurrentMediaInfo { get; private set; }
+
+        /// <summary>
+        /// Gets the baseUrl of the device.
+        /// </summary>
+        public string BaseUrl { get; }
 
         /// <summary>
         /// Gets or sets the Volume.
@@ -659,6 +666,19 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     _timer = null;
                 }
             }
+        }
+
+        /// <summary>
+        /// Refreshes the playTo device info.
+        /// </summary>
+        /// <param name="deviceProperties">The <see cref="PlayToDeviceInfo"/>.</param>
+        /// <param name="profileManager">The <see cref="IDlnaProfileManager"/>.</param>
+        /// <returns>Task.</returns>
+        public async Task RefreshDevice(PlayToDeviceInfo deviceProperties, IDlnaProfileManager profileManager)
+        {
+            // Get device capabilities.
+            var capabilities = await GetProtocolInfo().ConfigureAwait(false);
+            Profile = profileManager.GetProfile(deviceProperties, capabilities, true);
         }
 
         /// <summary>
@@ -1295,7 +1315,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="service">The <see cref="DeviceService"/> to use.</param>
         /// <param name="command">Command to send.</param>
         /// <param name="postData">Information to post.</param>
-        /// <param name="header">Headers to include.</param>
+        /// <param name="header"><i>ContentFeatures.dlna.org</i> header to include.</param>
         /// <returns>The <see cref="Task"/>.</returns>
         private async Task<Dictionary<string, string>?> SendCommandAsync(
             DeviceService service,
@@ -1349,9 +1369,9 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 XmlUtilities.XmlToDictionary(xmlResponse, out Dictionary<string, string>? results);
                 return results;
             }
-            catch (TaskCanceledException ex)
+            catch (TaskCanceledException)
             {
-                _logger.LogError(ex, "{Name}: SendCommandAsync timed out: {Url}.", Name, service.ControlUrl);
+                _logger.LogError("{Name}: SendCommandAsync timed out: {Url}.", Name, service.ControlUrl);
                 return null;
             }
             catch (HttpRequestException ex)
@@ -1361,7 +1381,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     Name,
                     service.ControlUrl,
                     PrettyPrint(options.Headers),
-                    postData.Replace(">", ">\r\n", StringComparison.Ordinal));
+                    postData);
                 _logger.LogError(ex, msg);
                 return null;
             }
@@ -1488,9 +1508,9 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 return false;
             }
 
-            foreach (KeyValuePair<string, string> entry in result)
+            foreach (var (key, value) in result)
             {
-                _logger.LogDebug("{Name}: {Key} = {Value:l}", Name, entry.Key, entry.Value);
+                _logger.LogDebug("{Name}: {Key} = {Value:l}", Name, key, value);
             }
 
             return false;

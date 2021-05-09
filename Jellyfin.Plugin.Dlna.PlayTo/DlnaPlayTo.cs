@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Api.Helpers;
 using Jellyfin.Networking.Configuration;
-using Jellyfin.Plugin.Dlna.Configuration;
 using Jellyfin.Plugin.Dlna.EventArgs;
 using Jellyfin.Plugin.Dlna.Helpers;
 using Jellyfin.Plugin.Dlna.Model;
@@ -339,12 +338,36 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                     return;
                 }
 
-                if (_sessionManager.Sessions.Any(i => args.Usn.Equals(i.DeviceId, StringComparison.Ordinal)))
+                var sessionInfo = _sessionManager.Sessions.FirstOrDefault(i => args.Usn.Equals(i.DeviceId, StringComparison.Ordinal));
+                if (sessionInfo == null)
+                {
+                    await AddDevice(args).ConfigureAwait(false);
+                    return;
+                }
+
+                // Check to see if we have a sessionController active.
+                var device = sessionInfo.SessionControllers.OfType<PlayToController>().FirstOrDefault()?.Device;
+                if (device == null)
                 {
                     return;
                 }
 
-                await AddDevice(args).ConfigureAwait(false);
+                // Check that the details of the device haven't changed.
+                var parsedUrl = new Uri(args.Location);
+                var baseUrl = $"{parsedUrl.Scheme}://{parsedUrl.Host}:{parsedUrl.Port}";
+                if (string.Equals(baseUrl, device.BaseUrl, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                // Device details have changed - so we need to refresh.
+                var deviceProperties = await PlayToDevice.ParseDevice(args, _httpClientFactory, _logger).ConfigureAwait(false);
+                if (deviceProperties == null)
+                {
+                    return;
+                }
+
+                await device.RefreshDevice(deviceProperties, _profileManager).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -486,11 +509,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
 
                 _locator.Server.SetTracingFilter(config.EnableSsdpTracing, config.SsdpTracingFilter);
 
-                config.ClientDiscoveryIntervalSeconds = Maths.Clamp(config.ClientDiscoveryIntervalSeconds, 4, 1500);
-                config.ClientNotificationInterval = Maths.Clamp(config.ClientNotificationInterval, 10, 60000);
-                config.CommunicationTimeout = Maths.Clamp(config.CommunicationTimeout, 8000, 60000);
-                config.TimerInterval = Maths.Clamp(config.TimerInterval, 0, 1200000);
-                config.QueueInterval = Maths.Clamp(config.QueueInterval, 0, 60000);
+                config.ClientDiscoveryIntervalSeconds = Math.Clamp(config.ClientDiscoveryIntervalSeconds, 4, 1500);
+                config.ClientNotificationInterval = Math.Clamp(config.ClientNotificationInterval, 10, 60000);
+                config.CommunicationTimeout = Math.Clamp(config.CommunicationTimeout, 8000, 60000);
+                config.TimerInterval = Math.Clamp(config.TimerInterval, 0, 1200000);
+                config.QueueInterval = Math.Clamp(config.QueueInterval, 0, 60000);
 
                 _locator.Interval = config.ClientNotificationInterval;
                 _locator.InitialInterval = config.UseNetworkDiscovery ? config.ClientDiscoveryIntervalSeconds : -1;

@@ -53,7 +53,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Model
             }
 
             playlistItem.StreamInfo.PlayMethod = PlayMethod.Transcode;
-            playlistItem.StreamInfo.Container = "." + transcodingProfile.Container?.TrimStart('.');
+            playlistItem.StreamInfo.Container = "." + transcodingProfile.Container.TrimStart('.');
 
             return playlistItem;
         }

@@ -1,4 +1,3 @@
-using System;
 using MediaBrowser.Model.Dlna;
 
 namespace Jellyfin.Plugin.Dlna.PlayTo.Model
