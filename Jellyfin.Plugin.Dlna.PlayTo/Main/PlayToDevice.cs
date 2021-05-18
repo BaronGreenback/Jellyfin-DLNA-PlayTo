@@ -882,7 +882,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
         private static string PrettyPrint(HttpHeaders m)
         {
-            var sb = new StringBuilder();
+            var sb = new StringBuilder(1024);
             foreach (var (key, value) in m)
             {
                 sb.Append(key);

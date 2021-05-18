@@ -78,5 +78,14 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         /// Gets or sets the list of devices which are static.
         /// </summary>
         public string[] StaticDevices { get; set; } = Array.Empty<string>();
+
+        /// <summary>
+        /// Returns a string representation of the shared properties of this class.
+        /// </summary>
+        /// <returns>A string containing shared values.</returns>
+        public override string ToString()
+        {
+            return UdpPortRange + ';' + SsdpTracingFilter + ';' + EnableSsdpTracing.ToString();
+        }
     }
 }
