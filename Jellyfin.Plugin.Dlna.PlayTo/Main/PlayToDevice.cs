@@ -273,7 +273,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <summary>
         /// Gets or sets a value indicating the USERAGENT that is sent to devices.
         /// </summary>
-        public static string UserAgent { get; set; } = "Microsoft-Windows/6.2 UPnP/1.0 Microsoft-DLNA DLNADOC/1.50";
+        public static string UserAgent { get; set; } = "UPnP/1.0 DLNADOC/1.50 Jellyfin/{Version}";
 
         /// <summary>
         /// Gets or sets a value indicating the frequency of the device polling (ms).

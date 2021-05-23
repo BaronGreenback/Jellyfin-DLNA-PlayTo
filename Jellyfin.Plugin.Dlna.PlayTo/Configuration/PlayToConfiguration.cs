@@ -1,4 +1,8 @@
 using System;
+using System.Xml.Serialization;
+using Jellyfin.Plugin.Dlna.Configuration;
+using Jellyfin.Plugin.Dlna.Model;
+using Jellyfin.Plugin.Dlna.Ssdp;
 using MediaBrowser.Model.Plugins;
 
 namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
@@ -33,11 +37,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         public int CommunicationTimeout { get; set; } = 8000;
 
         /// <summary>
-        /// Gets or sets the USERAGENT that is sent to devices.
-        /// </summary>
-        public string UserAgent { get; set; } = "Microsoft-Windows/6.2 UPnP/1.0 Microsoft-DLNA DLNADOC/1.50";
-
-        /// <summary>
         /// Gets or sets the frequency of the device polling (ms).
         /// </summary>
         public int TimerInterval { get; set; } = 30000;
@@ -53,23 +52,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         public string FriendlyName { get; set; } = "Jellyfin";
 
         /// <summary>
-        /// Gets or sets a value indicating whether detailed SSDP logs are sent to the console/log.
-        /// "Emby.Dlna": "Debug" must be set in logging.default.json for this property to have any effect.
-        /// </summary>
-        public bool EnableSsdpTracing { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether an IP address is to be used to filter the detailed ssdp logs that are being sent to the console/log.
-        /// If the setting "Emby.Dlna": "Debug" must be set in logging.default.json for this property to work.
-        /// </summary>
-        public string SsdpTracingFilter { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Gets or sets the range of UDP ports to use in communications as well as 1900.
-        /// </summary>
-        public string UdpPortRange { get; set; } = "49152-65535";
-
-        /// <summary>
         /// Gets or sets a value indicating whether network discovery should be used to detect devices.
         /// </summary>
         public bool UseNetworkDiscovery { get; set; }
@@ -80,12 +62,57 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         public string[] StaticDevices { get; set; } = Array.Empty<string>();
 
         /// <summary>
-        /// Returns a string representation of the shared properties of this class.
+        /// Gets or sets a value indicating whether detailed SSDP logs are sent to the console/log.
+        /// "Emby.Dlna": "Debug" must be set in logging.default.json for this property to have any effect.
         /// </summary>
-        /// <returns>A string containing shared values.</returns>
-        public override string ToString()
+        [XmlIgnoreAttribute]
+        public bool EnableSsdpTracing
         {
-            return UdpPortRange + ';' + SsdpTracingFilter + ';' + EnableSsdpTracing.ToString();
+            get => SsdpConfig.EnableSsdpTracing;
+            set => SsdpConfig.EnableSsdpTracing = value;
         }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether an IP address is to be used to filter the detailed ssdp logs that are being sent to the console/log.
+        /// If the setting "Emby.Dlna": "Debug" must be set in logging.default.json for this property to work.
+        /// </summary>
+        [XmlIgnoreAttribute]
+        public string SsdpTracingFilter
+        {
+            get => SsdpConfig.SsdpTracingFilter;
+            set => SsdpConfig.SsdpTracingFilter = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the range of UDP ports to use in communications as well as 1900.
+        /// </summary>
+        [XmlIgnoreAttribute]
+        public string UdpPortRange
+        {
+            get => SsdpConfig.UdpPortRange;
+            set => SsdpConfig.UdpPortRange = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the USERAGENT that is sent to devices.
+        /// </summary>
+        [XmlIgnoreAttribute]
+        public string UserAgent
+        {
+            get => SsdpConfig.UserAgent;
+            set => SsdpConfig.UserAgent = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the Dlna version that the SSDP server supports.
+        /// </summary>
+        [XmlIgnore]
+        public DlnaVersion DlnaVersion
+        {
+            get => SsdpConfig.DlnaVersion;
+            set => SsdpConfig.DlnaVersion = value;
+        }
+
+        private static SsdpConfiguration SsdpConfig => SsdpServer.GetInstance().Configuration;
     }
 }

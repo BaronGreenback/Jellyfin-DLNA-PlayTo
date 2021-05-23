@@ -118,6 +118,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             _mediaEncoder = mediaEncoder;
             _notificationManager = notificationManager;
             _networkManager = networkManager;
+            _configurationManager = configurationManager;
 
             _logger.LogDebug("DLNA PlayTo: Starting Device Discovery.");
             _locator = new SsdpLocator(
@@ -128,14 +129,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                 networkManager.GetInternalBindAddresses(),
                 networkManager);
 
-            // Update from ssdp.xml
-            var ssdpConfig = SsdpServer.Instance.Configuration;
-            if (!string.Equals(ssdpConfig.ToString(), Configuration.ToString(), StringComparison.Ordinal))
-            {
-                SsdpServer.Instance.Configuration.CopyProperties(Configuration);
-                SaveConfiguration();
-            }
-
             _locator.DeviceDiscovered += OnDeviceDiscoveryDeviceDiscovered;
 
             if (!Configuration.UseNetworkDiscovery)
@@ -144,8 +137,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                 AddStaticDevices();
             }
 
-            _configurationManager = configurationManager;
-            _configurationManager.NamedConfigurationUpdated += SyncWithSsdp;
             ConfigurationChanging += UpdateSettings;
 
             _locator.Start();
@@ -264,7 +255,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                 {
                     _logger.LogDebug("Disposing instance.");
 
-                    _configurationManager.NamedConfigurationUpdated -= SyncWithSsdp;
                     ConfigurationChanging -= UpdateSettings;
 
                     _locator.DeviceDiscovered -= OnDeviceDiscoveryDeviceDiscovered;
@@ -463,22 +453,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             _locator.SlowDown();
         }
 
-        private void SyncWithSsdp(object? sender, ConfigurationUpdateEventArgs args)
-        {
-            if (!args.Key.Equals("ssdp"))
-            {
-                return;
-            }
-
-            var ssdpConfig = ((SsdpConfiguration)args.NewConfiguration).ToString();
-            if (!string.Equals(ssdpConfig, Configuration.ToString(), StringComparison.Ordinal))
-            {
-                // Sync shared properties from SSDP.xml.
-                args.NewConfiguration.CopyProperties(Configuration);
-                SaveConfiguration(Configuration);
-            }
-        }
-
         private void UpdateSettings(object? sender, BasePluginConfiguration configuration)
         {
             var config = (PlayToConfiguration)configuration;
@@ -510,12 +484,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                 _logger.LogInformation("SSDP tracing disabled.");
             }
 
-            var ssdpConfig = SsdpServer.Instance.Configuration.ToString();
-            if (!string.Equals(ssdpConfig, config.ToString(), StringComparison.Ordinal))
-            {
-                config.CopyProperties(SsdpServer.Instance.Configuration);
-                SsdpServer.Instance.SaveConfiguration();
-            }
+            SsdpServer.Instance.SaveConfiguration();
 
             _locator.Server.SetTracingFilter(config.EnableSsdpTracing, config.SsdpTracingFilter);
 
