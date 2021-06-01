@@ -16,7 +16,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Model
         /// <returns>The <see cref="string"/>.</returns>
         public static string GetValue(this XElement container, XName name)
         {
-            var node = container.Element(name);
+            var node = container?.Element(name);
 
             return node?.Value ?? string.Empty;
         }
@@ -28,6 +28,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Model
         /// <param name="name">The <see cref="XName"/>.</param>
         /// <returns>The <see cref="string"/>.</returns>
         public static string GetDescendantValue(this XElement container, XName name)
-            => container.Descendants(name).FirstOrDefault()?.Value ?? string.Empty;
+            => container?.Descendants(name).FirstOrDefault()?.Value ?? string.Empty;
     }
 }

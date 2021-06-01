@@ -13,11 +13,11 @@ using Jellyfin.Plugin.Dlna.Helpers;
 using Jellyfin.Plugin.Dlna.Model;
 using Jellyfin.Plugin.Dlna.PlayTo.Configuration;
 using Jellyfin.Plugin.Dlna.PlayTo.Main;
-using Jellyfin.Plugin.Dlna.Profiles;
 using Jellyfin.Plugin.Dlna.Ssdp;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Common.Plugins;
+using MediaBrowser.Common.Profiles;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Drawing;
@@ -57,7 +57,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
         private readonly CancellationTokenSource _disposeCancellationTokenSource = new();
         private readonly List<PlayToDevice> _devices = new();
         private readonly SsdpLocator _locator;
-        private readonly IDlnaProfileManager _profileManager;
+        private readonly IProfileManager _profileManager;
         private bool _disposed;
 
         /// <summary>
@@ -98,9 +98,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             IMediaEncoder mediaEncoder,
             INotificationManager notificationManager,
             INetworkManager networkManager,
-            IDlnaProfileManager profileManager)
+            IProfileManager profileManager)
             : base(applicationPaths, xmlSerializer)
         {
+            SsdpConfiguration.JellyfinVersion = appHost.ApplicationVersionString;
+            DlnaStreamHelper.ProfileManager = profileManager;
             StreamingHelpers.StreamEvent ??= DlnaStreamHelper.StreamEventProcessor;
             Instance = this;
             _profileManager = profileManager;
@@ -119,10 +121,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             _notificationManager = notificationManager;
             _networkManager = networkManager;
             _configurationManager = configurationManager;
-
             _logger.LogDebug("DLNA PlayTo: Starting Device Discovery.");
             _locator = new SsdpLocator(
-                appHost,
                 _configurationManager,
                 _logger,
                 loggerFactory,
@@ -138,10 +138,9 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             }
 
             ConfigurationChanging += UpdateSettings;
+            UpdateSettings(this, Configuration);
 
-            _locator.Start();
-
-            var httpsOnly = _appHost.ListenWithHttps && configurationManager.GetConfiguration<NetworkConfiguration>("network").RequireHttps;
+            var httpsOnly = _appHost.ListenWithHttps && configurationManager.GetNetworkConfiguration().RequireHttps;
             if (httpsOnly)
             {
                 _logger.LogError("DLNA PlayTo will not operate correctly, as HTTP needs to be enabled.");
@@ -154,11 +153,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
         public event EventHandler<DlnaEventArgs>? DlnaEvents;
 
         /// <summary>
-        /// Gets the Instance.
-        /// </summary>
-        public static DlnaPlayTo? Instance { get; private set; }
-
-        /// <summary>
         /// Gets the Plugin Name.
         /// </summary>
         public override string Name => "DLNA PlayTo";
@@ -167,6 +161,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
         /// Gets the Id.
         /// </summary>
         public override Guid Id => Guid.Parse("06955396-4e1e-4984-965c-061342f842e3");
+
+        /// <summary>
+        /// Gets or sets the DLNA PlayTo instance.
+        /// </summary>
+        private static DlnaPlayTo? Instance { get; set; }
 
         /// <summary>
         /// The GetPages.
@@ -183,6 +182,15 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                     EmbeddedResourcePath = $"{GetType().Namespace}.Configuration.configPage.html"
                 }
             };
+        }
+
+        /// <summary>
+        /// Gets the static instance.
+        /// </summary>
+        /// <returns>The <see cref="DlnaPlayTo"/> instance.</returns>
+        public static DlnaPlayTo GetInstance()
+        {
+            return Instance ?? throw new NullReferenceException("Dlna PlayTo plugin not initialized.");
         }
 
         /// <summary>
@@ -217,6 +225,9 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             await _notificationManager.SendNotification(notification, null, CancellationToken.None).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Adds a list of static devices.
+        /// </summary>
         private void AddStaticDevices()
         {
             foreach (var location in Configuration.StaticDevices)
@@ -456,46 +467,17 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
         private void UpdateSettings(object? sender, BasePluginConfiguration configuration)
         {
             var config = (PlayToConfiguration)configuration;
-
-            PlayToDevice.CtsTimeout = config.CommunicationTimeout;
-            PlayToDevice.FriendlyName = config.FriendlyName;
-            PlayToDevice.QueueInterval = config.QueueInterval;
-            PlayToDevice.TimerInterval = config.TimerInterval;
-            PlayToDevice.UserAgent = config.UserAgent;
             _locator.Server.UdpPortRange = config.UdpPortRange;
-            if (!string.IsNullOrEmpty(config.SsdpTracingFilter))
-            {
-                if (IPAddress.TryParse(config.SsdpTracingFilter, out var addr))
-                {
-                    config.SsdpTracingFilter = addr.ToString();
-                }
-                else
-                {
-                    _logger.LogError("SsdpTracingFilter '{Filter}' is invalid. ", config.SsdpTracingFilter);
-                }
-            }
-
-            if (config.EnableSsdpTracing)
-            {
-                _logger.LogInformation("Setting SSDP tracing to : {Filter}", config.SsdpTracingFilter);
-            }
-            else
-            {
-                _logger.LogInformation("SSDP tracing disabled.");
-            }
-
-            SsdpServer.Instance.SaveConfiguration();
-
-            _locator.Server.SetTracingFilter(config.EnableSsdpTracing, config.SsdpTracingFilter);
-
-            config.ClientDiscoveryIntervalSeconds = Math.Clamp(config.ClientDiscoveryIntervalSeconds, 4, 1500);
-            config.ClientNotificationInterval = Math.Clamp(config.ClientNotificationInterval, 10, 60000);
+            SsdpServer.Instance.UpdateConfiguration();
+            config.ClientDiscoveryInitialInterval = Math.Clamp(config.ClientDiscoveryInitialInterval, 4, 1500);
+            config.ClientDiscoveryInterval = Math.Clamp(config.ClientDiscoveryInterval, 10, 60000);
             config.CommunicationTimeout = Math.Clamp(config.CommunicationTimeout, 8000, 60000);
             config.TimerInterval = Math.Clamp(config.TimerInterval, 0, 1200000);
             config.QueueInterval = Math.Clamp(config.QueueInterval, 0, 60000);
 
-            _locator.Interval = config.ClientNotificationInterval;
-            _locator.InitialInterval = config.UseNetworkDiscovery ? config.ClientDiscoveryIntervalSeconds : -1;
+            _locator.Interval = config.ClientDiscoveryInterval;
+            _locator.InitialInterval = config.UseNetworkDiscovery ? config.ClientDiscoveryInitialInterval : -1;
+            _locator.Start();
         }
     }
 }

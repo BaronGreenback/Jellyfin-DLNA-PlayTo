@@ -31,7 +31,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Api
             {
                 using var reader = new StreamReader(Request.Body, Encoding.UTF8);
                 var response = await reader.ReadToEndAsync().ConfigureAwait(false);
-                await DlnaPlayTo.Instance!.NotifyDevice(new DlnaEventArgs(id, response)).ConfigureAwait(false);
+                await DlnaPlayTo.GetInstance().NotifyDevice(new DlnaEventArgs(id, response)).ConfigureAwait(false);
             }
 #pragma warning disable CA1031 // Do not catch general exception types
             catch

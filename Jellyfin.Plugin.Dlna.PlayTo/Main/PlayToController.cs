@@ -11,8 +11,8 @@ using Jellyfin.Plugin.Dlna.Didl;
 using Jellyfin.Plugin.Dlna.Model;
 using Jellyfin.Plugin.Dlna.PlayTo.EventArgs;
 using Jellyfin.Plugin.Dlna.PlayTo.Model;
-using Jellyfin.Plugin.Dlna.Profiles;
 using Jellyfin.Plugin.Dlna.Ssdp;
+using MediaBrowser.Common.Profiles;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Drawing;
 using MediaBrowser.Controller.Entities;
@@ -50,8 +50,10 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         private readonly string _serverAddress;
         private readonly string? _accessToken;
         private readonly List<PlaylistItem> _playlist = new();
-        private readonly IDlnaProfileManager _profileManager;
+        private readonly IProfileManager _profileManager;
+        private readonly Timer _photoTransitionTimer;
         private int _currentPlaylistIndex = -1;
+        private PlaystateCommand? _photoSlideshow;
         private bool _disposed;
 
         /// <summary>
@@ -72,7 +74,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="config">The <see cref="IServerConfigurationManager"/>.</param>
         /// <param name="mediaEncoder">The mediaEncoder<see cref="IMediaEncoder"/>.</param>
         /// <param name="device">The <see cref="PlayToDevice"/>.</param>
-        /// <param name="dlnaProfileManager">The <see cref="IDlnaProfileManager"/>.</param>
+        /// <param name="profileManager">The <see cref="IProfileManager"/>.</param>
         public PlayToController(
             SessionInfo session,
             ISessionManager sessionManager,
@@ -89,7 +91,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             IServerConfigurationManager config,
             IMediaEncoder mediaEncoder,
             PlayToDevice device,
-            IDlnaProfileManager dlnaProfileManager)
+            IProfileManager profileManager)
         {
             _session = session;
             _sessionManager = sessionManager;
@@ -105,8 +107,18 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             _mediaSourceManager = mediaSourceManager;
             _config = config;
             _mediaEncoder = mediaEncoder;
+            _photoTransitionTimer = new Timer(
+                (object? state) =>
+                {
+                    _logger.LogDebug("Transitioning image...");
+                    SetPlaylistIndex(_currentPlaylistIndex + 1);
+                },
+                null,
+                Timeout.Infinite,
+                Timeout.Infinite);
+
             Device = device;
-            _profileManager = dlnaProfileManager;
+            _profileManager = profileManager;
 
             Device.OnDeviceUnavailable = OnDeviceUnavailable;
             Device.PlaybackStart += OnDevicePlaybackStart;
@@ -147,13 +159,22 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 return Task.CompletedTask;
             }
 
-            return name switch
+            switch (name)
             {
-                SessionMessageType.Play => SendPlayCommand(data as PlayRequest),
-                SessionMessageType.Playstate => SendPlaystateCommand(data as PlaystateRequest),
-                SessionMessageType.GeneralCommand => SendGeneralCommand(data as GeneralCommand),
-                _ => Task.CompletedTask
-            };
+                case SessionMessageType.Play:
+                    SendPlayCommand(data as PlayRequest);
+                    return Task.CompletedTask;
+
+                case SessionMessageType.Playstate:
+                    SendPlaystateCommand(data as PlaystateRequest);
+                    return Task.CompletedTask;
+
+                case SessionMessageType.GeneralCommand:
+                    SendGeneralCommand(data as GeneralCommand);
+                    return Task.CompletedTask;
+            }
+
+            return Task.CompletedTask;
         }
 
         /// <inheritdoc />
@@ -166,14 +187,12 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         private static int? GetIntValue(IReadOnlyDictionary<string, string> values, string name)
         {
             var value = values.GetValueOrDefault(name);
-
             return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result) ? result : null;
         }
 
         private static long GetLongValue(IReadOnlyDictionary<string, string> values, string name)
         {
             var value = values.GetValueOrDefault(name);
-
             return long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result) ? result : 0;
         }
 
@@ -327,6 +346,12 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     return;
                 }
 
+                if (streamInfo.Item is Photo)
+                {
+                    await ReportPlaybackStopped(streamInfo, 1).ConfigureAwait(false);
+                    return;
+                }
+
                 var positionTicks = GetProgressPositionTicks(streamInfo);
                 await ReportPlaybackStopped(streamInfo, positionTicks).ConfigureAwait(false);
                 var mediaSource = await streamInfo.GetMediaSource(CancellationToken.None).ConfigureAwait(false);
@@ -336,7 +361,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     mediaSource.RunTimeTicks;
 
                 var playedToCompletion = positionTicks == 0;
-
                 if (!playedToCompletion && duration.HasValue && positionTicks.HasValue)
                 {
                     double percent = positionTicks.Value;
@@ -347,7 +371,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                 if (playedToCompletion)
                 {
-                    await SetPlaylistIndex(_currentPlaylistIndex + 1).ConfigureAwait(false);
+                    SetPlaylistIndex(_currentPlaylistIndex + 1);
                 }
                 else
                 {
@@ -503,7 +527,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             }
         }
 
-        private Task SendPlayCommand(PlayRequest? command)
+        private void SendPlayCommand(PlayRequest? command)
         {
             if (command == null)
             {
@@ -528,12 +552,25 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             }
 
             var playlist = new List<PlaylistItem>(len);
+            var didl = new DidlBuilder(
+                Device.Profile,
+                user,
+                _imageProcessor,
+                _serverAddress,
+                _accessToken,
+                _userDataManager,
+                _localization,
+                _mediaSourceManager,
+                _logger,
+                _mediaEncoder,
+                _libraryManager);
+
             for (int i = 0; i < len; i++)
             {
                 PlaylistItem? item;
                 if (playlist.Count == 0)
                 {
-                    item = CreatePlaylistItem(items[0], user, command.StartPositionTicks ?? 0, command.MediaSourceId, command.AudioStreamIndex, command.SubtitleStreamIndex);
+                    item = CreatePlaylistItem(items[0], user, command.StartPositionTicks ?? 0, command.MediaSourceId, command.AudioStreamIndex, command.SubtitleStreamIndex, didl);
                     if (item == null)
                     {
                         // skip through any without stream urls.
@@ -542,7 +579,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 }
                 else
                 {
-                    item = CreatePlaylistItem(items[i], user, 0, null, null, null);
+                    item = CreatePlaylistItem(items[i], user, 0, null, null, null, didl);
                     if (item == null)
                     {
                         continue;
@@ -580,7 +617,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                         _logger.LogDebug("{Name} - Adding {Count} items to the end of the playlist.", _session.DeviceName, _playlist.Count);
                         if (Device.IsPlaying)
                         {
-                            return Task.CompletedTask;
+                            return;
                         }
 
                         break;
@@ -601,7 +638,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                         if (Device.IsPlaying)
                         {
-                            return Task.CompletedTask;
+                            return;
                         }
 
                         break;
@@ -619,45 +656,90 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     user);
             }
 
-            return PlayItems();
+            PlayItems();
         }
 
-        private Task SendPlaystateCommand(PlaystateRequest? command)
+        private void SendPlaystateCommand(PlaystateRequest? command)
         {
             if (command == null)
             {
-                return Task.CompletedTask;
+                return;
+            }
+
+            if (_photoSlideshow != null)
+            {
+                var timeout = DlnaPlayTo.GetInstance().Configuration.PhotoTransitionalTimeout * 1000;
+                switch (command.Command)
+                {
+                    case PlaystateCommand.Stop:
+                        _playlist.Clear();
+                        _photoTransitionTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                        _photoSlideshow = null;
+                        break;
+                    case PlaystateCommand.Pause:
+                        _photoTransitionTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                        _photoSlideshow = PlaystateCommand.Pause;
+                        break;
+                    case PlaystateCommand.Unpause:
+                        _photoTransitionTimer.Change(timeout, Timeout.Infinite);
+                        _photoSlideshow = PlaystateCommand.PlayPause;
+                        break;
+                    case PlaystateCommand.PlayPause:
+                        _photoTransitionTimer.Change(timeout, Timeout.Infinite);
+                        break;
+                    case PlaystateCommand.NextTrack:
+                        _photoTransitionTimer.Change(timeout, Timeout.Infinite);
+                        SetPlaylistIndex(_currentPlaylistIndex + 1);
+                        return;
+                    case PlaystateCommand.PreviousTrack:
+                        _photoTransitionTimer.Change(timeout, Timeout.Infinite);
+                        SetPlaylistIndex(_currentPlaylistIndex - 1);
+                        return;
+                }
+
+                return;
             }
 
             switch (command.Command)
             {
                 case PlaystateCommand.Stop:
                     _playlist.Clear();
-                    return Device.Stop();
+                    Device.Stop();
+                    return;
 
                 case PlaystateCommand.Pause:
-                    return Device.Pause();
+                    Device.Pause();
+                    return;
 
                 case PlaystateCommand.Unpause:
-                    return Device.Play();
+                    Device.Play();
+                    return;
 
                 case PlaystateCommand.PlayPause:
-                    return Device.IsPaused ? Device.Play() : Device.Pause();
+                    if (Device.IsPaused)
+                    {
+                        Device.Play();
+                        return;
+                    }
+
+                    Device.Pause();
+                    return;
 
                 case PlaystateCommand.Seek:
-                    return Seek(command.SeekPositionTicks ?? 0);
+                    Seek(command.SeekPositionTicks ?? 0);
+                    return;
 
                 case PlaystateCommand.NextTrack:
-                    return SetPlaylistIndex(_currentPlaylistIndex + 1);
+                    SetPlaylistIndex(_currentPlaylistIndex + 1);
+                    return;
 
                 case PlaystateCommand.PreviousTrack:
-                    return SetPlaylistIndex(_currentPlaylistIndex - 1);
+                    SetPlaylistIndex(_currentPlaylistIndex - 1);
+                    return;
             }
-
-            return Task.CompletedTask;
         }
 
-        private async Task Seek(long newPosition)
+        private void Seek(long newPosition)
         {
             var media = Device.CurrentMediaInfo;
 
@@ -675,7 +757,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                         return;
                     }
 
-                    await Device.SetAvTransport(newItem.StreamInfo.MediaType, true, newItem.StreamUrl!, GetDlnaHeaders(newItem), newItem.Didl, true, newPosition).ConfigureAwait(false);
+                    Device.SetAvTransport(newItem.StreamInfo.MediaType, true, newItem.StreamUrl!, GetDlnaHeaders(newItem), newItem.Didl, true, newPosition);
                     SendNextTrackMessage();
                 }
             }
@@ -694,7 +776,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             // The current playing item is indeed in the play list and we are not yet at the end of the playlist.
             var nextItemIndex = _currentPlaylistIndex + 1;
             var nextItem = _playlist[nextItemIndex];
-
             // Send the SetNextAvTransport message.
             Device.SetNextAvTransport(nextItem.StreamUrl!, GetDlnaHeaders(nextItem), nextItem.Didl);
         }
@@ -702,34 +783,28 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         private void AddItemFromId(Guid id, ICollection<BaseItem> list)
         {
             var item = _libraryManager.GetItemById(id);
-            if (item.MediaType is MediaType.Audio or MediaType.Video)
+
+            // Ensure the device can be play the media.
+            foreach (var type in Device.Profile.GetSupportedMediaTypes())
             {
-                list.Add(item);
+                if (string.Equals(item.MediaType, type, StringComparison.OrdinalIgnoreCase))
+                {
+                    list.Add(item);
+                    return;
+                }
             }
         }
 
         private PlaylistItem? CreatePlaylistItem(
-            BaseItem item,
-            User? user,
-            long startPostionTicks,
-            string? mediaSourceId,
-            int? audioStreamIndex,
-            int? subtitleStreamIndex)
+        BaseItem item,
+        User? user,
+        long startPostionTicks,
+        string? mediaSourceId,
+        int? audioStreamIndex,
+        int? subtitleStreamIndex,
+        DidlBuilder? didl = null)
         {
-            var mediaSources = item is IHasMediaSources
-                ? _mediaSourceManager.GetStaticMediaSources(item, true, user).ToArray()
-                : Array.Empty<MediaSourceInfo>();
-
-            var playlistItem = GetPlaylistItem(item, mediaSources, Device.Profile, _session.DeviceId, mediaSourceId, audioStreamIndex, subtitleStreamIndex);
-            playlistItem.StreamUrl = playlistItem.StreamInfo.ToUrl(_serverAddress, _accessToken, "&dlna=true");
-
-            if (playlistItem.StreamUrl == null)
-            {
-                return null;
-            }
-
-            playlistItem.StreamInfo.StartPositionTicks = startPostionTicks;
-            var itemXml = new DidlBuilder(
+            didl ??= new DidlBuilder(
                 Device.Profile,
                 user,
                 _imageProcessor,
@@ -740,11 +815,32 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 _mediaSourceManager,
                 _logger,
                 _mediaEncoder,
-                _libraryManager,
-                (48, 48))
-                .GetItemDidl(item, user, null, _session.DeviceId, FilterHelper.Filter(), playlistItem.StreamInfo);
+                _libraryManager);
 
-            playlistItem.Didl = itemXml;
+            var mediaSources = item is IHasMediaSources
+                ? _mediaSourceManager.GetStaticMediaSources(item, true, user).ToArray()
+                : Array.Empty<MediaSourceInfo>();
+
+            var playlistItem = GetPlaylistItem(item, mediaSources, Device.Profile, _session.DeviceId, mediaSourceId, audioStreamIndex, subtitleStreamIndex);
+            string itemDidl;
+            if (playlistItem.StreamInfo.MediaType != DlnaProfileType.Photo)
+            {
+                playlistItem.StreamUrl = playlistItem.StreamInfo.ToUrl(_serverAddress, _accessToken, "&dlna=true");
+                itemDidl = didl.GetItemDidl(item, user, null, _session.DeviceId, FilterHelper.Filter(), playlistItem.StreamInfo);
+            }
+            else
+            {
+                playlistItem.StreamUrl = didl.GetImageUrl(item);
+                itemDidl = didl.GetItemDidl(item, user, null, _session.DeviceId, FilterHelper.Filter(), playlistItem.StreamInfo);
+            }
+
+            if (playlistItem.StreamUrl == null)
+            {
+                return null;
+            }
+
+            playlistItem.StreamInfo.StartPositionTicks = startPostionTicks;
+            playlistItem.Didl = itemDidl;
 
             return playlistItem;
         }
@@ -792,38 +888,44 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             throw new ArgumentException("Unrecognized item type.");
         }
 
-        private async Task<bool> PlayItems()
+        private void PlayItems()
         {
             _logger.LogDebug("{Name} - Playing {Count} items", _session.DeviceName, _playlist.Count);
 
-            await SetPlaylistIndex(0).ConfigureAwait(false);
-            return true;
+            SetPlaylistIndex(0);
         }
 
-        private async Task SetPlaylistIndex(int index)
+        private void SetPlaylistIndex(int index)
         {
             if (index < 0 || index >= _playlist.Count)
             {
                 _playlist.Clear();
+                _photoSlideshow = null;
                 _currentPlaylistIndex = -1;
-                await Device.Stop().ConfigureAwait(false);
+                Device.Stop();
                 return;
             }
 
             _currentPlaylistIndex = index;
-            var currentitem = _playlist[index];
+            var currentItem = _playlist[index];
 
-            if (currentitem.StreamUrl != null)
+            if (currentItem.StreamUrl != null)
             {
-                var streamInfo = currentitem.StreamInfo;
-                await Device.SetAvTransport(
-                    currentitem.StreamInfo.MediaType,
+                var streamInfo = currentItem.StreamInfo;
+                Device.SetAvTransport(
+                    currentItem.StreamInfo.MediaType,
                     true,
-                    currentitem.StreamUrl,
-                    GetDlnaHeaders(currentitem),
-                    currentitem.Didl,
+                    currentItem.StreamUrl,
+                    GetDlnaHeaders(currentItem),
+                    currentItem.Didl,
                     index > 0,
-                    streamInfo.StartPositionTicks > 0 && streamInfo.IsDirectStream ? streamInfo.StartPositionTicks : 0).ConfigureAwait(false);
+                    streamInfo.StartPositionTicks > 0 && streamInfo.IsDirectStream ? streamInfo.StartPositionTicks : 0);
+
+                if (currentItem.StreamInfo.MediaType == DlnaProfileType.Photo)
+                {
+                    _photoTransitionTimer.Change(DlnaPlayTo.GetInstance().Configuration.PhotoTransitionalTimeout * 1000, Timeout.Infinite);
+                    _photoSlideshow = PlaystateCommand.PlayPause;
+                }
 
                 SendNextTrackMessage();
             }
@@ -856,25 +958,35 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             _disposed = true;
         }
 
-        private Task SendGeneralCommand(GeneralCommand? command)
+        private void SendGeneralCommand(GeneralCommand? command)
         {
             if (command == null)
             {
-                return Task.CompletedTask;
+                return;
             }
 
             switch (command.Name)
             {
                 case GeneralCommandType.VolumeDown:
-                    return Device.VolumeDown();
+                    Device.VolumeDown();
+                    return;
+
                 case GeneralCommandType.VolumeUp:
-                    return Device.VolumeUp();
+                    Device.VolumeUp();
+                    return;
+
                 case GeneralCommandType.Mute:
-                    return Device.Mute();
+                    Device.Mute();
+                    return;
+
                 case GeneralCommandType.Unmute:
-                    return Device.Unmute();
+                    Device.Unmute();
+                    return;
+
                 case GeneralCommandType.ToggleMute:
-                    return Device.ToggleMute();
+                    Device.ToggleMute();
+                    return;
+
                 case GeneralCommandType.SetAudioStreamIndex:
                     if (!command.Arguments.TryGetValue("Index", out string? index))
                     {
@@ -883,7 +995,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                     if (int.TryParse(index, NumberStyles.Integer, CultureDefault.UsCulture, out var val))
                     {
-                        return SetAudioStreamIndex(val);
+                        SetAudioStreamIndex(val);
+                        return;
                     }
 
                     throw new ArgumentException("Unsupported SetAudioStreamIndex value supplied.");
@@ -896,7 +1009,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                     if (int.TryParse(index, NumberStyles.Integer, CultureDefault.UsCulture, out val))
                     {
-                        return SetSubtitleStreamIndex(val);
+                        SetSubtitleStreamIndex(val);
+                        return;
                     }
 
                     throw new ArgumentException("Unsupported SetSubtitleStreamIndex value supplied.");
@@ -913,14 +1027,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     }
 
                     Device.Volume = volume;
-                    return Task.CompletedTask;
-
-                default:
-                    return Task.CompletedTask;
+                    return;
             }
         }
 
-        private async Task SetAudioStreamIndex(int? newIndex)
+        private void SetAudioStreamIndex(int? newIndex)
         {
             var media = Device.CurrentMediaInfo;
 
@@ -949,20 +1060,20 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                         return;
                     }
 
-                    await Device.SetAvTransport(
+                    Device.SetAvTransport(
                         newItem.StreamInfo.MediaType,
                         !seekAfter,
                         newItem.StreamUrl,
                         GetDlnaHeaders(newItem),
                         newItem.Didl,
                         true,
-                        seekAfter ? newPosition : 0).ConfigureAwait(false);
+                        seekAfter ? newPosition : 0);
                     SendNextTrackMessage();
                 }
             }
         }
 
-        private async Task SetSubtitleStreamIndex(int? newIndex)
+        private void SetSubtitleStreamIndex(int? newIndex)
         {
             var media = Device.CurrentMediaInfo;
 
@@ -985,14 +1096,14 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     bool seekAfter = newItem.StreamInfo.IsDirectStream && newPosition > 0;
 
                     // Pass our intentions to the device, so that it doesn't restart at the beginning, only to then seek.
-                    await Device.SetAvTransport(
+                    Device.SetAvTransport(
                         newItem.StreamInfo.MediaType,
                         !seekAfter,
                         newItem.StreamUrl!,
                         GetDlnaHeaders(newItem),
                         newItem.Didl,
                         true,
-                        seekAfter ? newPosition : 0).ConfigureAwait(false);
+                        seekAfter ? newPosition : 0);
                     SendNextTrackMessage();
                 }
             }
@@ -1078,6 +1189,9 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     return request;
                 }
 
+                request.Item = libraryManager.GetItemById(request.ItemId);
+                request.MediaSourceManager = mediaSourceManager;
+
                 var index = url.IndexOf('?', StringComparison.Ordinal);
                 if (index == -1)
                 {
@@ -1092,8 +1206,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 request.AudioStreamIndex = GetIntValue(values, "AudioStreamIndex");
                 request.SubtitleStreamIndex = GetIntValue(values, "SubtitleStreamIndex");
                 request.StartPositionTicks = GetLongValue(values, "StartPositionTicks");
-                request.Item = libraryManager.GetItemById(request.ItemId);
-                request.MediaSourceManager = mediaSourceManager;
                 return request;
             }
 
@@ -1129,19 +1241,19 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             /// <returns>A <see cref="Guid"/>, or Guid.Empty if not found.</returns>
             private static Guid GetItemId(string url)
             {
-                var parts = url.Split('/');
+                var segments = new string[] { "/video/", "/audio/", "/Items/" };
 
-                for (var i = 0; i < parts.Length - 1; i++)
+                foreach (var segment in segments)
                 {
-                    var part = parts[i];
-
-                    if (!string.Equals(part, "audio", StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(part, "videos", StringComparison.OrdinalIgnoreCase))
+                    int i = url.IndexOf(segment, StringComparison.OrdinalIgnoreCase);
+                    if (i == -1)
                     {
                         continue;
                     }
 
-                    if (Guid.TryParse(parts[i + 1], out var result))
+                    i += segment.Length;
+                    int j = url.IndexOf('/', i + 1);
+                    if (Guid.TryParse(url[i..j], out var result))
                     {
                         return result;
                     }

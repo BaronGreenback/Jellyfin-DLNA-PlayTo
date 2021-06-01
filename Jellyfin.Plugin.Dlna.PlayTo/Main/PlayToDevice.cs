@@ -20,8 +20,9 @@ using Jellyfin.Plugin.Dlna.EventArgs;
 using Jellyfin.Plugin.Dlna.Model;
 using Jellyfin.Plugin.Dlna.PlayTo.EventArgs;
 using Jellyfin.Plugin.Dlna.PlayTo.Model;
-using Jellyfin.Plugin.Dlna.Profiles;
+using Jellyfin.Plugin.Dlna.Ssdp;
 using MediaBrowser.Common.Net;
+using MediaBrowser.Common.Profiles;
 using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Notifications;
 using Microsoft.Extensions.Logging;
@@ -131,7 +132,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         private const int Normal = -1;
 
         private static readonly XNamespace _ud = "urn:schemas-upnp-org:device-1-0";
-        private static readonly DefaultProfile _blankProfile = new();
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger _logger;
         private readonly object _timerLock = new();
@@ -165,6 +165,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
         private bool _disposed;
         private Timer? _timer;
+        private DeviceProfile? _profile;
 
         /// <summary>
         /// Connection failure retry counter.
@@ -233,7 +234,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             _logger = logger;
             _serverAddress = serverAddress;
             TransportState = TransportState.No_Media_Present;
-            Profile = _blankProfile;
             Name = playToDeviceInfo.Name;
             Uuid = playToDeviceInfo.Uuid;
             Services = playToDeviceInfo.Services;
@@ -264,31 +264,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// Events called when the media changes.
         /// </summary>
         public event EventHandler<MediaChangedEventArgs>? MediaChanged;
-
-        /// <summary>
-        /// Gets or sets a value indicating the maximum wait time for http responses in ms.
-        /// </summary>
-        public static int CtsTimeout { get; set; } = 10000;
-
-        /// <summary>
-        /// Gets or sets a value indicating the USERAGENT that is sent to devices.
-        /// </summary>
-        public static string UserAgent { get; set; } = "UPnP/1.0 DLNADOC/1.50 Jellyfin/{Version}";
-
-        /// <summary>
-        /// Gets or sets a value indicating the frequency of the device polling (ms).
-        /// </summary>
-        public static int TimerInterval { get; set; } = 30000;
-
-        /// <summary>
-        /// Gets or sets a value indicating the user queue processing frequency (ms).
-        /// </summary>
-        public static int QueueInterval { get; set; } = 1000;
-
-        /// <summary>
-        /// Gets or sets a value indicating the friendly name used with devices.
-        /// </summary>
-        public static string FriendlyName { get; set; } = "Jellyfin";
 
         /// <summary>
         /// Gets the device's Uuid.
@@ -395,12 +370,32 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <summary>
         /// Gets the device's profile.
         /// </summary>
-        public DeviceProfile Profile { get; private set; }
+        public DeviceProfile Profile => _profile!;
+
+        /// <summary>
+        /// Gets a value indicating the maximum wait time for http responses in ms.
+        /// </summary>
+        private static int CtsTimeout => DlnaPlayTo.GetInstance().Configuration.CommunicationTimeout;
+
+        /// <summary>
+        /// Gets a value indicating the friendly name used with devices.
+        /// </summary>
+        private static string FriendlyName => DlnaPlayTo.GetInstance().Configuration.FriendlyName;
 
         /// <summary>
         /// Gets a value indicating whether trace information should be redirected to the logs.
         /// </summary>
-        private static bool Tracing => DlnaPlayTo.Instance!.Configuration.EnablePlayToDebug;
+        private static bool Tracing => DlnaPlayTo.GetInstance().Configuration.EnablePlayToDebug;
+
+        /// <summary>
+        /// Gets a value indicating the frequency of the device polling (ms).
+        /// </summary>
+        private static int TimerInterval => DlnaPlayTo.GetInstance().Configuration.TimerInterval;
+
+        /// <summary>
+        /// Gets a value indicating the user queue processing frequency (ms).
+        /// </summary>
+        private static int QueueInterval => DlnaPlayTo.GetInstance().Configuration.QueueInterval;
 
         /// <summary>
         /// Gets the Render Control service.
@@ -552,22 +547,21 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="httpClientFactory">The <see cref="IHttpClientFactory"/> instance.</param>
         /// <param name="logger">The <see cref="ILogger"/> instance.</param>
         /// <param name="serverAddress">The server address to embed in the Didl.</param>
-        /// <param name="profileManager">The <see cref="IDlnaProfileManager"/>.</param>
+        /// <param name="profileManager">The <see cref="IProfileManager"/>.</param>
         /// <returns>The <see cref="Task"/>.</returns>
         public static async Task<PlayToDevice> CreateDevice(
             PlayToDeviceInfo deviceProperties,
             IHttpClientFactory httpClientFactory,
             ILogger logger,
             string serverAddress,
-            IDlnaProfileManager profileManager)
+            IProfileManager profileManager)
         {
             var device = new PlayToDevice(deviceProperties, httpClientFactory, logger, serverAddress);
 
             // Get device capabilities.
-            var capabilities = await device.GetProtocolInfo().ConfigureAwait(false);
+            var protocolInfo = await device.GetProtocolInfo().ConfigureAwait(false);
 
-            device.Profile = profileManager.GetProfile(deviceProperties, capabilities, true);
-
+            device._profile = profileManager.GetProfile(deviceProperties, protocolInfo, true);
             return device;
         }
 
@@ -672,104 +666,86 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// Refreshes the playTo device info.
         /// </summary>
         /// <param name="deviceProperties">The <see cref="PlayToDeviceInfo"/>.</param>
-        /// <param name="profileManager">The <see cref="IDlnaProfileManager"/>.</param>
+        /// <param name="profileManager">The <see cref="IProfileManager"/>.</param>
         /// <returns>Task.</returns>
-        public async Task RefreshDevice(PlayToDeviceInfo deviceProperties, IDlnaProfileManager profileManager)
+        public async Task RefreshDevice(PlayToDeviceInfo deviceProperties, IProfileManager profileManager)
         {
             // Get device capabilities.
-            var capabilities = await GetProtocolInfo().ConfigureAwait(false);
-            Profile = profileManager.GetProfile(deviceProperties, capabilities, true);
+            var protocolInfo = await GetProtocolInfo().ConfigureAwait(false);
+            _profile = profileManager.GetProfile(deviceProperties, protocolInfo, true);
         }
 
         /// <summary>
         /// Decreases the volume.
         /// </summary>
-        /// <returns>Task.</returns>
-        public Task VolumeDown()
+        public void VolumeDown()
         {
             QueueEvent(QueueCommands.SetVolume, Math.Max(_volume - _volRange.Step, _volRange.Min));
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// Increases the volume.
         /// </summary>
-        /// <returns>Task.</returns>
-        public Task VolumeUp()
+        public void VolumeUp()
         {
             QueueEvent(QueueCommands.SetVolume, Math.Min(_volume + _volRange.Step, _volRange.Max));
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// Toggles Mute.
         /// </summary>
-        /// <returns>Task.</returns>
-        public Task ToggleMute()
+        public void ToggleMute()
         {
             AddOrCancelIfQueued(QueueCommands.ToggleMute);
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// Starts playback.
         /// </summary>
-        /// <returns>Task.</returns>
-        public Task Play()
+        public void Play()
         {
             QueueEvent(QueueCommands.Play);
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// Stops playback.
         /// </summary>
-        /// <returns>Task.</returns>
-        public Task Stop()
+        public void Stop()
         {
             QueueEvent(QueueCommands.Stop);
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// Pauses playback.
         /// </summary>
-        /// <returns>Task.</returns>
-        public Task Pause()
+        public void Pause()
         {
             QueueEvent(QueueCommands.Pause);
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// Mutes the sound.
         /// </summary>
-        /// <returns>Task.</returns>
-        public Task Mute()
+        public void Mute()
         {
             QueueEvent(QueueCommands.Mute);
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// Resumes the sound.
         /// </summary>
-        /// <returns>Task.</returns>
-        public Task Unmute()
+        public void Unmute()
         {
             QueueEvent(QueueCommands.UnMute);
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// Moves playback to a specific point.
         /// </summary>
         /// <param name="value">The point at which playback will resume.</param>
-        /// <returns>Task.</returns>
-        public Task Seek(TimeSpan value)
+        public void Seek(TimeSpan value)
         {
             QueueEvent(QueueCommands.Seek, value);
-            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -782,13 +758,12 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="metadata">Media metadata.</param>
         /// <param name="immediate">Set to true to effect an immediate change.</param>
         /// <param name="position">Position to seek after change.</param>
-        /// <returns>Task.</returns>
-        public async Task SetAvTransport(DlnaProfileType mediaType, bool resetPlay, string url, string headers, string metadata, bool immediate, long position)
+        public void SetAvTransport(DlnaProfileType mediaType, bool resetPlay, string url, string headers, string metadata, bool immediate, long position)
         {
             var media = new MediaData(url, headers, metadata, mediaType, resetPlay, position);
             if (immediate)
             {
-                await QueueMedia(media).ConfigureAwait(false);
+                _ = QueueMedia(media);
                 return;
             }
 
@@ -797,7 +772,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             // Not all devices auto-play after loading media (eg. Hisense)
             QueueEvent(QueueCommands.Play);
 
-            if (position != 0)
+            if (position != 0 && mediaType != DlnaProfileType.Photo)
             {
                 QueueEvent(QueueCommands.Seek, position);
             }
@@ -893,6 +868,19 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             return sb.ToString();
         }
 
+        private static void AssignUserAgent(HttpRequestMessage options, ILogger logger)
+        {
+            string ua = SsdpServer.GetInstance().Configuration.GetUserAgent();
+            if (options.Headers.UserAgent.TryParseAdd(ua))
+            {
+                options.Headers.UserAgent.ParseAdd(ua);
+            }
+            else
+            {
+                logger.LogError("The UserAgent setting {UserAgent} is invalid.", ua);
+            }
+        }
+
         /// <summary>
         /// Gets service information from the DLNA clients.
         /// </summary>
@@ -903,7 +891,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         private static async Task<XElement> GetDataAsync(IHttpClientFactory httpClientFactory, string url, ILogger logger)
         {
             using var options = new HttpRequestMessage(HttpMethod.Get, url);
-            options.Headers.UserAgent.ParseAdd(UserAgent);
+            AssignUserAgent(options, logger);
+
             options.Headers.TryAddWithoutValidation("FriendlyName.dlna.org", FriendlyName);
             options.Headers.TryAddWithoutValidation("Accept", MediaTypeNames.Text.Xml);
 
@@ -1238,40 +1227,43 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 string thisMedia = Regex.Replace(_mediaPlaying, "&StartTimeTicks=\\d*", string.Empty);
                 string newMedia = Regex.Replace(settings.Url, "&StartTimeTicks=\\d*", string.Empty);
 
-                if (!string.Equals(thisMedia, newMedia, StringComparison.Ordinal))
+                if (settings.MediaType != DlnaProfileType.Photo)
                 {
-                    if (Tracing)
+                    if (!string.Equals(thisMedia, newMedia, StringComparison.Ordinal))
                     {
-                        _logger.LogDebug("{Name}: Stopping current playback for transition.", Name);
+                        if (Tracing)
+                        {
+                            _logger.LogDebug("{Name}: Stopping current playback for transition.", Name);
+                        }
+
+                        bool success = await SendStopRequest().ConfigureAwait(false);
+
+                        if (success)
+                        {
+                            // Save current progress.
+                            TransportState = TransportState.Transitioning;
+                            UpdateMediaInfo(null);
+                        }
                     }
 
-                    bool success = await SendStopRequest().ConfigureAwait(false);
-
-                    if (success)
+                    if (settings.ResetPlayback || settings.Position != TimeSpan.Zero)
                     {
-                        // Save current progress.
-                        TransportState = TransportState.Transitioning;
-                        UpdateMediaInfo(null);
-                    }
-                }
+                        // Restart from the beginning.
+                        if (Tracing)
+                        {
+                            _logger.LogDebug("{Name}: Resetting playback position.", Name);
+                        }
 
-                if (settings.ResetPlayback || settings.Position != TimeSpan.Zero)
-                {
-                    // Restart from the beginning.
-                    if (Tracing)
-                    {
-                        _logger.LogDebug("{Name}: Resetting playback position.", Name);
-                    }
+                        bool success = await SendSeekRequest(settings.Position).ConfigureAwait(false);
+                        if (success)
+                        {
+                            // Save progress and restart time.
+                            UpdateMediaInfo(CurrentMediaInfo);
+                            RestartTimer(Normal);
 
-                    bool success = await SendSeekRequest(settings.Position).ConfigureAwait(false);
-                    if (success)
-                    {
-                        // Save progress and restart time.
-                        UpdateMediaInfo(CurrentMediaInfo);
-                        RestartTimer(Normal);
-
-                        // We're finished. Nothing further to do.
-                        return;
+                            // We're finished. Nothing further to do.
+                            return;
+                        }
                     }
                 }
             }
@@ -1299,7 +1291,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
             try
             {
-                await DlnaPlayTo.Instance!.SendNotification(notification).ConfigureAwait(false);
+                await DlnaPlayTo.GetInstance().SendNotification(notification).ConfigureAwait(false);
             }
 #pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception ex)
@@ -1332,7 +1324,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             var cts = new CancellationTokenSource();
 
             using var options = new HttpRequestMessage(HttpMethod.Post, service.ControlUrl);
-            options.Headers.UserAgent.ParseAdd(UserAgent);
+            AssignUserAgent(options, _logger);
             options.Headers.TryAddWithoutValidation("SOAPACTION", $"\"{service.ServiceType}#{command}\"");
             options.Headers.TryAddWithoutValidation("Pragma", "no-cache");
             options.Headers.TryAddWithoutValidation("FriendlyName.dlna.org", FriendlyName);
@@ -1535,7 +1527,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             }
 
             using var options = new HttpRequestMessage(new HttpMethod("SUBSCRIBE"), service.EventSubUrl);
-            options.Headers.UserAgent.ParseAdd(UserAgent);
+            AssignUserAgent(options, _logger);
             options.Headers.TryAddWithoutValidation("Accept", MediaTypeNames.Text.Xml);
 
             // Renewal or subscription?
@@ -1627,7 +1619,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 try
                 {
                     // Start listening to DLNA events that come via the url through the PlayToManger.
-                    DlnaPlayTo.Instance!.DlnaEvents += ProcessSubscriptionEvent;
+                    DlnaPlayTo.GetInstance().DlnaEvents += ProcessSubscriptionEvent;
 
                     // Subscribe to both AvTransport and RenderControl events.
                     _transportSid = await SubscribeInternalAsync(AvTransport, _transportSid).ConfigureAwait(false);
@@ -1681,7 +1673,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             }
 
             using var options = new HttpRequestMessage(new HttpMethod("UNSUBSCRIBE"), service.EventSubUrl);
-            options.Headers.UserAgent.ParseAdd(UserAgent);
+            AssignUserAgent(options, _logger);
             options.Headers.TryAddWithoutValidation("SID", "uuid: {sid}");
             options.Headers.TryAddWithoutValidation("Accept", MediaTypeNames.Text.Xml);
 
@@ -1740,7 +1732,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 try
                 {
                     // stop processing events.
-                    DlnaPlayTo.Instance!.DlnaEvents -= ProcessSubscriptionEvent;
+                    DlnaPlayTo.GetInstance().DlnaEvents -= ProcessSubscriptionEvent;
 
                     var success = await UnSubscribeInternalAsync(AvTransport, _transportSid).ConfigureAwait(false);
                     if (success)
@@ -1849,27 +1841,29 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                             // Try and get the latest position update
                             await GetPositionRequest().ConfigureAwait(false);
                         }
-                        else if (TimeSpan.TryParse(value, CultureDefault.UsCulture, out TimeSpan rel))
+                        else
                         {
+                            var parsed = TimeSpan.TryParse(value, CultureDefault.UsCulture, out TimeSpan rel);
                             if (Tracing)
                             {
-                                _logger.LogDebug("{Name}: RelativeTimePosition: {Position}", Name, rel);
+                                _logger.LogDebug("{Name}: {Status} RelativeTimePosition: {Position}", Name, parsed ? "Valid" : "Invalid", rel);
                             }
 
-                            Position = rel;
+                            Position = parsed ? rel : TimeSpan.Zero;
                             _lastPositionRequest = DateTime.UtcNow;
                         }
                     }
 
-                    if (reply.TryGetValue("CurrentTrackDuration.val", out value)
-                        && TimeSpan.TryParse(value, CultureDefault.UsCulture, out TimeSpan dur))
+                    if (reply.TryGetValue("CurrentTrackDuration.val", out value))
                     {
+                        var parsed = TimeSpan.TryParse(value, CultureDefault.UsCulture, out TimeSpan dur);
+
                         if (Tracing)
                         {
-                            _logger.LogDebug("{Name}: CurrentTrackDuration: {Duration}", Name, dur);
+                            _logger.LogDebug("{Name}: {Status} CurrentTrackDuration: {Duration}", Name, parsed ? "Valid" : "Invalid", value);
                         }
 
-                        Duration = dur;
+                        Duration = parsed ? dur : TimeSpan.Zero;
                     }
 
                     UBaseObject? currentObject;
@@ -2443,7 +2437,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             if (disposing)
             {
                 _timer?.Dispose();
-                DlnaPlayTo.Instance!.DlnaEvents -= ProcessSubscriptionEvent;
+                DlnaPlayTo.GetInstance().DlnaEvents -= ProcessSubscriptionEvent;
             }
 
             _disposed = true;

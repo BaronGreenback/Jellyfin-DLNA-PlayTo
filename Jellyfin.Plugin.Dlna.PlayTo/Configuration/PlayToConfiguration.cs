@@ -1,4 +1,6 @@
+#pragma warning disable CA1822 // Mark members as static
 using System;
+using System.Net;
 using System.Xml.Serialization;
 using Jellyfin.Plugin.Dlna.Configuration;
 using Jellyfin.Plugin.Dlna.Model;
@@ -22,29 +24,34 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         /// Gets or sets the initial ssdp client discovery interval time (in seconds).
         /// Once a device has been detected, this discovery interval will drop to <seealso cref="ClientNotificationInterval"/> seconds.
         /// </summary>
-        public int ClientDiscoveryIntervalSeconds { get; set; } = 15;
+        /// <remarks>Range: 4 - 15 seconds.</remarks>
+        public int ClientDiscoveryInitialInterval { get; set; } = 5;
 
         /// <summary>
         /// Gets or sets the continuous ssdp client discovery interval time (in seconds).
         /// </summary>
-        public int ClientNotificationInterval { get; set; } = 1800;
+        /// <remarks>Range 10 to 60000.</remarks>
+        public int ClientDiscoveryInterval { get; set; } = 1800; // 30 mins.
 
         /// <summary>
         /// Gets or sets the amount of time given for the device to respond in ms.
         /// Setting this too low will result in JF not knowing the device is streaming.
         /// Note: Some devices don't respond until the device starts streaming.
         /// </summary>
-        public int CommunicationTimeout { get; set; } = 8000;
+        /// <remarks>Range: 8000 - 60000 seconds.</remarks>
+        public int CommunicationTimeout { get; set; } = 8000; // 8 seconds.
 
         /// <summary>
         /// Gets or sets the frequency of the device polling (ms).
         /// </summary>
-        public int TimerInterval { get; set; } = 30000;
+        /// <remarks>Range: 0 - 1200000.</remarks>
+        public int TimerInterval { get; set; } = 30000; // 30 seconds.
 
         /// <summary>
-        /// Gets or sets a value indicating the command queue processing frequency (ms).
+        /// Gets or sets a value indicating the command queue processing frequency (ms). A value that is too low, may override the dlna device.
         /// </summary>
-        public int QueueInterval { get; set; } = 1000;
+        /// <remarks>Range: 60000.</remarks>
+        public int QueueInterval { get; set; } = 1000; // 1 second.
 
         /// <summary>
         /// Gets or sets the friendly name that is used.
@@ -52,14 +59,19 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         public string FriendlyName { get; set; } = "Jellyfin";
 
         /// <summary>
-        /// Gets or sets a value indicating whether network discovery should be used to detect devices.
+        /// Gets or sets a value indicating whether active network discovery should be used to detect devices.
         /// </summary>
-        public bool UseNetworkDiscovery { get; set; }
+        public bool UseNetworkDiscovery { get; set; } = true;
 
         /// <summary>
-        /// Gets or sets the list of devices which are static.
+        /// Gets or sets the list of devices which are static. Works with <seealso cref="UseNetworkDiscovery"/>.
         /// </summary>
         public string[] StaticDevices { get; set; } = Array.Empty<string>();
+
+        /// <summary>
+        /// Gets or sets the time in seconds between photo transitions.
+        /// </summary>
+        public int PhotoTransitionalTimeout { get; set; } = 5;
 
         /// <summary>
         /// Gets or sets a value indicating whether detailed SSDP logs are sent to the console/log.
