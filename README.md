@@ -8,8 +8,8 @@ DLNA PlayTo plugin for Jellyfin 10.8.0.0
 - Basic Photo slideshow implementation.
 - Discovery broadcasts become less frequent once devices are located.
 - Much faster detection of devices.
-- real time changes
-- if active links with dlna server, client details are linked to help improve playback.
+- Real time setting changes.
+- If DLNA server plugin is loaded, any client details are shared to help aid in better playback.
 
 **Settings**
 
