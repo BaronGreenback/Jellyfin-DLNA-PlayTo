@@ -1,10 +1,15 @@
 DLNA PlayTo plugin for Jellyfin 10.8.0.0
 
 - DLNA logging between server and client.
-- Ability to handle non-standard and corrupt xml device responses.
+- Ability to handle non-standard and invalid xml device responses.
 - SSDP Packet Tracing
 - Restrict UDP ports to a specific range
 - Auto create simple dlna profiles from device detection.
+- Basic Photo slideshow implementation.
+- Discovery broadcasts become less frequent once devices are located.
+- Much faster detection of devices.
+- real time changes
+- if active links with dlna server, client details are linked to help improve playback.
 
 **Settings**
 
@@ -12,12 +17,12 @@ DLNA PlayTo plugin for Jellyfin 10.8.0.0
 
 Enables dlna play to debugging.
 
-**ClientDiscoveryIntervalSeconds**
+**ClientDiscoveryInitialInterval**
 
 Sets the initial ssdp client discovery interval time (in seconds).
 Once a device has been detected, this discovery interval will drop to **ClientNotificationInterval** seconds.
         
-**ClientNotificationInterval**
+**ClientDiscoveryInterval**
 
 Sets the continuous ssdp client discovery interval time (in seconds).
 
@@ -29,11 +34,11 @@ Sets the amount of time given for the device to respond in ms.
 
 Sets the USERAGENT that is sent to devices.
 
-**TimerInterval**
+**DevicePollingInterval**
 
 Sets the frequency of the device polling (ms).
 
-**QueueInterval**
+**QueueProcessingInterval**
 
 Sets the command queue processing frequency.
 
@@ -48,3 +53,7 @@ Enables/disables network discovery. Used with **StaticDevices**.
 **StaticDevices**
 
 Lists the static devices to be instantiated on the system.
+
+**PhotoTransitionalTimeout**
+
+The amount of time each photo will appear on screen before the next one is auto-loaded.
