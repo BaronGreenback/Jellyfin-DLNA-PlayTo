@@ -12,11 +12,13 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Model
         /// </summary>
         /// <param name="streamInfo">The <see cref="StreamInfo"/>.</param>
         /// <param name="profile">The <see cref="DeviceProfile"/>.</param>
-        public PlaylistItem(StreamInfo streamInfo, DeviceProfile profile)
+        /// <param name="mediaType">The <see cref="DlnaProfileType"/>.</param>
+        public PlaylistItem(StreamInfo streamInfo, DeviceProfile profile, DlnaProfileType mediaType)
         {
             StreamInfo = streamInfo;
             Profile = profile;
             Didl = string.Empty;
+            MediaType = mediaType;
         }
 
         /// <summary>
@@ -38,5 +40,10 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Model
         /// Gets the device profile.
         /// </summary>
         public DeviceProfile Profile { get; }
+
+        /// <summary>
+        /// Gets the media type of this item.
+        /// </summary>
+        public DlnaProfileType MediaType { get; }
     }
 }

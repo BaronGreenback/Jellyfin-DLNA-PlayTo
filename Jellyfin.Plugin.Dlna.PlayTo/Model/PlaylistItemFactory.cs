@@ -31,9 +31,10 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Model
 
             var playlistItem = new PlaylistItem(
                 new StreamInfo(item.Id, DlnaProfileType.Photo, profile),
-                profile);
+                profile,
+                DlnaProfileType.Photo);
 
-            var directPlay = profile.DirectPlayProfiles
+            var directPlay = profile.DirectPlayProfiles?
                 .FirstOrDefault(i => i.Type == DlnaProfileType.Photo && IsSupported(i, item));
 
             if (directPlay != null)
@@ -44,7 +45,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Model
                 return playlistItem;
             }
 
-            var transcodingProfile = profile.TranscodingProfiles
+            var transcodingProfile = profile.TranscodingProfiles?
                 .FirstOrDefault(i => i.Type == DlnaProfileType.Photo);
 
             if (transcodingProfile == null)

@@ -16,17 +16,24 @@
                         </div>
                         <div class="verticalSection verticalSection-extrabottompadding">
                             <div class="inputContainer">
-                                <label class="inputeLabel inputLabelUnfocused" for="ClientDiscoveryIntervalSeconds">Initial client discovery interval.</label>
-                                <input is="emby-input" id="ClientDiscoveryIntervalSeconds" name="ClientDiscoveryIntervalSeconds" type="number" min="1" max="65535" />
+                                <label class="inputeLabel inputLabelUnfocused" for="ClientDiscoveryInitialInterval">Initial client discovery interval.</label>
+                                <input is="emby-input" id="ClientDiscoveryInitialInterval" name="ClientDiscoveryInitialInterval" type="number" min="1" max="65535" />
                                 <div class="fieldDescription">
                                     The interval, in seconds, between discovery attempts until a device is located.
                                 </div>
                             </div>
                             <div class="inputContainer">
-                                <label class="inputeLabel inputLabelUnfocused" for="ClientNotificationInterval">Client discovery interval.</label>
-                                <input is="emby-input" id="ClientNotificationInterval" name="ClientNotificationInterval" type="number" min="1" max="65535" />
+                                <label class="inputeLabel inputLabelUnfocused" for="ClientDiscoveryInterval">Client discovery interval.</label>
+                                <input is="emby-input" id="ClientDiscoveryInterval" name="ClientDiscoveryInterval" type="number" min="1" max="65535" />
                                 <div class="fieldDescription">
-                                    The interval, in seconds, between discovery attempts after a device has been located.
+                                    The interval, in seconds, between discovery attempts after the initial device discovery.
+                                </div>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputeLabel inputLabelUnfocused" for="PhotoTransitionalTimeout">Time between photo transitions.</label>
+                                <input is="emby-input" id="PhotoTransitionalTimeout" name="PhotoTransitionalTimeout" type="number" min="1" max="65535" />
+                                <div class="fieldDescription">
+                                    The interval, in seconds, before the next photo is transmitted to the device.
                                 </div>
                             </div>
                             <div class="checkboxContainer checkboxContainer-withDescripton">
@@ -76,11 +83,12 @@
                 document.querySelector("#PlayToConfigPage")
                     .addEventListener("pageshow", function () {
                         ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
-                            document.querySelector('#ClientDiscoveryIntervalSeconds').value = config.ClientDiscoveryIntervalSeconds;
-                            document.querySelector('#ClientNotificationInterval').value = config.ClientNotificationInterval;                            
+                            document.querySelector('#ClientDiscoveryInterval').value = config.ClientDiscoveryInterval;
+                            document.querySelector('#ClientDiscoveryInitialInterval').value = config.ClientDiscoveryInitialInterval;
                             document.querySelector('#EnablePlayToDebug').checked = config.EnablePlayToDebug;
                             document.querySelector('#EnableSsdpTracing').checked = config.EnableSsdpTracing;
                             document.querySelector('#SsdpTracingFilter').value = config.SsdpTracingFilter;
+                            document.querySelector('#PhotoTransitionalTimeout').value = config.PhotoTransitionalTimeout;
                             Dashboard.hideLoadingMsg();
                         });
                     });
@@ -89,11 +97,12 @@
                     .addEventListener('submit', function (e) {
                         Dashboard.showLoadingMsg();
                         ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
-                            config.ClientDiscoveryIntervalSeconds = document.querySelector('#ClientDiscoveryIntervalSeconds').value;
-                            config.ClientNotificationInterval = document.querySelector('#ClientNotificationInterval').value; 
+                            config.ClientDiscoveryInterval = document.querySelector('#ClientDiscoveryInterval').value;
+                            config.ClientDiscoveryInitialInterval = document.querySelector('#ClientDiscoveryInitialInterval').value;
                             config.EnablePlayToDebug = document.querySelector('#EnablePlayToDebug').checked;
                             config.EnableSsdpTracing = document.querySelector('#EnableSsdpTracing').checked;
                             config.SsdpTracingFilter = document.querySelector('#SsdpTracingFilter').value;
+                            config.PhotoTransitionalTimeout = document.querySelector('#PhotoTransitionalTimeout').value;
                             ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config).then(function (result) {
                                 Dashboard.processPluginConfigurationUpdateResult(result);
                             });

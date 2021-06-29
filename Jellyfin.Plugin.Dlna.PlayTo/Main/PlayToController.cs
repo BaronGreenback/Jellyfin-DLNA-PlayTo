@@ -12,7 +12,7 @@ using Jellyfin.Plugin.Dlna.Model;
 using Jellyfin.Plugin.Dlna.PlayTo.EventArgs;
 using Jellyfin.Plugin.Dlna.PlayTo.Model;
 using Jellyfin.Plugin.Dlna.Ssdp;
-using MediaBrowser.Common.Profiles;
+using Jellyfin.Profiles;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Drawing;
 using MediaBrowser.Controller.Entities;
@@ -166,7 +166,18 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     return Task.CompletedTask;
 
                 case SessionMessageType.Playstate:
-                    SendPlaystateCommand(data as PlaystateRequest);
+                    if (data is not PlaystateRequest request)
+                    {
+                        return Task.CompletedTask;
+                    }
+
+                    if (_photoSlideshow != null)
+                    {
+                        SendPhotoCommand(request);
+                        return Task.CompletedTask;
+                    }
+
+                    SendPlaystateCommand(request);
                     return Task.CompletedTask;
 
                 case SessionMessageType.GeneralCommand:
@@ -261,12 +272,9 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             try
             {
                 _sessionManager.ReportSessionEnded(_session.Id);
-                if (!string.IsNullOrEmpty(Device.Profile.Id))
-                {
-                    _profileManager.DeleteProfile(Device.Profile.Id);
-                }
-
-                _ = Device.DeviceUnavailable();
+            }
+            catch (ObjectDisposedException)
+            {
             }
 #pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception ex)
@@ -275,6 +283,11 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 // Could throw if the session is already gone
                 _logger.LogError(ex, "Error reporting the end of session {Id}", _session.Id);
             }
+
+            _profileManager.DeleteProfile(Device.Profile.Id);
+
+            _ = Device.DeviceUnavailable();
+            Dispose();
         }
 
         private void OnDeviceDiscoveryDeviceLeft(object? sender, DiscoveredSsdpDevice e)
@@ -290,7 +303,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             usn ??= string.Empty;
             nt ??= string.Empty;
 
-            if (usn.Contains(Device.Uuid, StringComparison.OrdinalIgnoreCase)
+            if (usn.Contains(Device.Profile.Uuid, StringComparison.OrdinalIgnoreCase)
                 && (usn.Contains("MediaRenderer:", StringComparison.OrdinalIgnoreCase) || nt.Contains("MediaRenderer:", StringComparison.OrdinalIgnoreCase)))
             {
                 OnDeviceUnavailable();
@@ -659,47 +672,53 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             PlayItems();
         }
 
-        private void SendPlaystateCommand(PlaystateRequest? command)
+        private void SendPhotoCommand(PlaystateRequest command)
         {
-            if (command == null)
+            var timeout = DlnaPlayTo.GetInstance().Configuration.PhotoTransitionalTimeout * 1000;
+            switch (command.Command)
             {
-                return;
-            }
+                case PlaystateCommand.Stop:
+                    _playlist.Clear();
+                    _photoTransitionTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                    _photoSlideshow = null;
+                    return;
 
-            if (_photoSlideshow != null)
-            {
-                var timeout = DlnaPlayTo.GetInstance().Configuration.PhotoTransitionalTimeout * 1000;
-                switch (command.Command)
-                {
-                    case PlaystateCommand.Stop:
-                        _playlist.Clear();
-                        _photoTransitionTimer.Change(Timeout.Infinite, Timeout.Infinite);
-                        _photoSlideshow = null;
-                        break;
-                    case PlaystateCommand.Pause:
-                        _photoTransitionTimer.Change(Timeout.Infinite, Timeout.Infinite);
-                        _photoSlideshow = PlaystateCommand.Pause;
-                        break;
-                    case PlaystateCommand.Unpause:
-                        _photoTransitionTimer.Change(timeout, Timeout.Infinite);
+                case PlaystateCommand.Pause:
+                    _photoTransitionTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                    _photoSlideshow = PlaystateCommand.Pause;
+                    return;
+
+                case PlaystateCommand.Unpause:
+                    _photoTransitionTimer.Change(timeout, Timeout.Infinite);
+                    _photoSlideshow = PlaystateCommand.PlayPause;
+                    return;
+
+                case PlaystateCommand.PlayPause:
+                    if (_photoSlideshow == PlaystateCommand.Pause)
+                    {
                         _photoSlideshow = PlaystateCommand.PlayPause;
-                        break;
-                    case PlaystateCommand.PlayPause:
                         _photoTransitionTimer.Change(timeout, Timeout.Infinite);
-                        break;
-                    case PlaystateCommand.NextTrack:
-                        _photoTransitionTimer.Change(timeout, Timeout.Infinite);
-                        SetPlaylistIndex(_currentPlaylistIndex + 1);
                         return;
-                    case PlaystateCommand.PreviousTrack:
-                        _photoTransitionTimer.Change(timeout, Timeout.Infinite);
-                        SetPlaylistIndex(_currentPlaylistIndex - 1);
-                        return;
-                }
+                    }
 
-                return;
+                    _photoSlideshow = PlaystateCommand.Pause;
+                    _photoTransitionTimer.Change(timeout, Timeout.Infinite);
+                    return;
+
+                case PlaystateCommand.NextTrack:
+                    _photoTransitionTimer.Change(timeout, Timeout.Infinite);
+                    SetPlaylistIndex(_currentPlaylistIndex + 1);
+                    return;
+
+                case PlaystateCommand.PreviousTrack:
+                    _photoTransitionTimer.Change(timeout, Timeout.Infinite);
+                    SetPlaylistIndex(_currentPlaylistIndex - 1);
+                    return;
             }
+        }
 
+        private void SendPlaystateCommand(PlaystateRequest command)
+        {
             switch (command.Command)
             {
                 case PlaystateCommand.Stop:
@@ -785,25 +804,23 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             var item = _libraryManager.GetItemById(id);
 
             // Ensure the device can be play the media.
-            foreach (var type in Device.Profile.GetSupportedMediaTypes())
+            if (Device.Profile.IsMediaTypeSupported(item.MediaType))
             {
-                if (string.Equals(item.MediaType, type, StringComparison.OrdinalIgnoreCase))
-                {
-                    list.Add(item);
-                    return;
-                }
+                list.Add(item);
+                return;
             }
         }
 
         private PlaylistItem? CreatePlaylistItem(
-        BaseItem item,
-        User? user,
-        long startPostionTicks,
-        string? mediaSourceId,
-        int? audioStreamIndex,
-        int? subtitleStreamIndex,
-        DidlBuilder? didl = null)
+            BaseItem item,
+            User? user,
+            long startPostionTicks,
+            string? mediaSourceId,
+            int? audioStreamIndex,
+            int? subtitleStreamIndex,
+            DidlBuilder? didl = null)
         {
+            // only create a DIDL object if neccessary.
             didl ??= new DidlBuilder(
                 Device.Profile,
                 user,
@@ -821,18 +838,15 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 ? _mediaSourceManager.GetStaticMediaSources(item, true, user).ToArray()
                 : Array.Empty<MediaSourceInfo>();
 
+            if (!Device.Profile.IsMediaTypeSupported(item.MediaType))
+            {
+                return null;
+            }
+
             var playlistItem = GetPlaylistItem(item, mediaSources, Device.Profile, _session.DeviceId, mediaSourceId, audioStreamIndex, subtitleStreamIndex);
-            string itemDidl;
-            if (playlistItem.StreamInfo.MediaType != DlnaProfileType.Photo)
-            {
-                playlistItem.StreamUrl = playlistItem.StreamInfo.ToUrl(_serverAddress, _accessToken, "&dlna=true");
-                itemDidl = didl.GetItemDidl(item, user, null, _session.DeviceId, FilterHelper.Filter(), playlistItem.StreamInfo);
-            }
-            else
-            {
-                playlistItem.StreamUrl = didl.GetImageUrl(item);
-                itemDidl = didl.GetItemDidl(item, user, null, _session.DeviceId, FilterHelper.Filter(), playlistItem.StreamInfo);
-            }
+            playlistItem.StreamUrl = playlistItem.MediaType == DlnaProfileType.Photo
+                ? playlistItem.StreamUrl = didl.GetImageUrl(item)
+                : playlistItem.StreamInfo.ToUrl(_serverAddress, _accessToken, "&dlna=true");
 
             if (playlistItem.StreamUrl == null)
             {
@@ -840,12 +854,19 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             }
 
             playlistItem.StreamInfo.StartPositionTicks = startPostionTicks;
-            playlistItem.Didl = itemDidl;
+            playlistItem.Didl = didl.GetItemDidl(item, user, null, _session.DeviceId, FilterHelper.Filter(), playlistItem.StreamInfo);
 
             return playlistItem;
         }
 
-        private PlaylistItem GetPlaylistItem(BaseItem item, MediaSourceInfo[] mediaSources, DeviceProfile profile, string deviceId, string? mediaSourceId, int? audioStreamIndex, int? subtitleStreamIndex)
+        private PlaylistItem GetPlaylistItem(
+            BaseItem item,
+            MediaSourceInfo[] mediaSources,
+            DeviceProfile profile,
+            string deviceId,
+            string? mediaSourceId,
+            int? audioStreamIndex,
+            int? subtitleStreamIndex)
         {
             if (string.Equals(item.MediaType, MediaType.Video, StringComparison.OrdinalIgnoreCase))
             {
@@ -861,7 +882,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                         AudioStreamIndex = audioStreamIndex,
                         SubtitleStreamIndex = subtitleStreamIndex
                     }),
-                    profile);
+                    profile,
+                    DlnaProfileType.Video);
             }
 
             if (string.Equals(item.MediaType, MediaType.Audio, StringComparison.OrdinalIgnoreCase))
@@ -877,7 +899,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                             MaxBitrate = profile.MaxStreamingBitrate,
                             MediaSourceId = mediaSourceId
                         }),
-                    profile);
+                    profile,
+                    DlnaProfileType.Audio);
             }
 
             if (string.Equals(item.MediaType, MediaType.Photo, StringComparison.OrdinalIgnoreCase))
@@ -891,7 +914,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         private void PlayItems()
         {
             _logger.LogDebug("{Name} - Playing {Count} items", _session.DeviceName, _playlist.Count);
-
             SetPlaylistIndex(0);
         }
 
@@ -923,6 +945,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
                 if (currentItem.StreamInfo.MediaType == DlnaProfileType.Photo)
                 {
+                    // As photos are loaded immediately, we must start a timer to do image transition.
                     _photoTransitionTimer.Change(DlnaPlayTo.GetInstance().Configuration.PhotoTransitionalTimeout * 1000, Timeout.Infinite);
                     _photoSlideshow = PlaystateCommand.PlayPause;
                 }

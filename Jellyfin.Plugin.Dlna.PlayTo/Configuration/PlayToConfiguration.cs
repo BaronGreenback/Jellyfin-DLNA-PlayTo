@@ -1,6 +1,7 @@
 #pragma warning disable CA1822 // Mark members as static
 using System;
 using System.Net;
+using System.Text.Json.Serialization;
 using System.Xml.Serialization;
 using Jellyfin.Plugin.Dlna.Configuration;
 using Jellyfin.Plugin.Dlna.Model;
@@ -39,19 +40,22 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         /// Note: Some devices don't respond until the device starts streaming.
         /// </summary>
         /// <remarks>Range: 8000 - 60000 seconds.</remarks>
+        [JsonIgnore]
         public int CommunicationTimeout { get; set; } = 8000; // 8 seconds.
 
         /// <summary>
         /// Gets or sets the frequency of the device polling (ms).
         /// </summary>
         /// <remarks>Range: 0 - 1200000.</remarks>
-        public int TimerInterval { get; set; } = 30000; // 30 seconds.
+        [JsonIgnore]
+        public int DevicePollingInterval { get; set; } = 30000; // 30 seconds.
 
         /// <summary>
         /// Gets or sets a value indicating the command queue processing frequency (ms). A value that is too low, may override the dlna device.
         /// </summary>
         /// <remarks>Range: 60000.</remarks>
-        public int QueueInterval { get; set; } = 1000; // 1 second.
+        [JsonIgnore]
+        public int QueueProcessingInterval { get; set; } = 1000; // 1 second.
 
         /// <summary>
         /// Gets or sets the friendly name that is used.
@@ -61,11 +65,13 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         /// <summary>
         /// Gets or sets a value indicating whether active network discovery should be used to detect devices.
         /// </summary>
+        [JsonIgnore]
         public bool UseNetworkDiscovery { get; set; } = true;
 
         /// <summary>
         /// Gets or sets the list of devices which are static. Works with <seealso cref="UseNetworkDiscovery"/>.
         /// </summary>
+        [JsonIgnore]
         public string[] StaticDevices { get; set; } = Array.Empty<string>();
 
         /// <summary>
@@ -109,6 +115,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         /// Gets or sets the USERAGENT that is sent to devices.
         /// </summary>
         [XmlIgnoreAttribute]
+        [JsonIgnore]
         public string UserAgent
         {
             get => SsdpConfig.UserAgent;
@@ -119,6 +126,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Configuration
         /// Gets or sets the Dlna version that the SSDP server supports.
         /// </summary>
         [XmlIgnore]
+        [JsonIgnore]
         public DlnaVersion DlnaVersion
         {
             get => SsdpConfig.DlnaVersion;

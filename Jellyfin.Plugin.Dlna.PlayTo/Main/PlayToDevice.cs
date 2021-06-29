@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Mime;
@@ -18,11 +19,12 @@ using Jellyfin.Plugin.Dlna.Culture;
 using Jellyfin.Plugin.Dlna.Didl;
 using Jellyfin.Plugin.Dlna.EventArgs;
 using Jellyfin.Plugin.Dlna.Model;
+using Jellyfin.Plugin.Dlna.PlayTo.Configuration;
 using Jellyfin.Plugin.Dlna.PlayTo.EventArgs;
 using Jellyfin.Plugin.Dlna.PlayTo.Model;
 using Jellyfin.Plugin.Dlna.Ssdp;
+using Jellyfin.Profiles;
 using MediaBrowser.Common.Net;
-using MediaBrowser.Common.Profiles;
 using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Notifications;
 using Microsoft.Extensions.Logging;
@@ -132,6 +134,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         private const int Normal = -1;
 
         private static readonly XNamespace _ud = "urn:schemas-upnp-org:device-1-0";
+        private static readonly PlayToConfiguration _configuration = DlnaPlayTo.GetInstance().Configuration;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger _logger;
         private readonly object _timerLock = new();
@@ -164,8 +167,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         private TimeSpan _position = TimeSpan.Zero;
 
         private bool _disposed;
-        private Timer? _timer;
-        private DeviceProfile? _profile;
+        private Timer? _deviceCommunicationsTimer;
 
         /// <summary>
         /// Connection failure retry counter.
@@ -224,25 +226,22 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <summary>
         /// Initializes a new instance of the <see cref="PlayToDevice"/> class.
         /// </summary>
-        /// <param name="playToDeviceInfo">The <see cref="PlayToDeviceInfo"/> instance.</param>
+        /// <param name="playToDeviceInfo">The <see cref="PlayToDeviceProfile"/> instance.</param>
         /// <param name="httpClientFactory">The <see cref="IHttpClientFactory"/> instance.</param>
         /// <param name="logger">The <see cref="ILogger"/> instance.</param>
         /// <param name="serverAddress">The server address to use in the response.</param>
-        private PlayToDevice(PlayToDeviceInfo playToDeviceInfo, IHttpClientFactory httpClientFactory, ILogger logger, string serverAddress)
+        private PlayToDevice(PlayToDeviceProfile playToDeviceInfo, IHttpClientFactory httpClientFactory, ILogger logger, string serverAddress)
         {
             _httpClientFactory = httpClientFactory;
             _logger = logger;
             _serverAddress = serverAddress;
+            Profile = playToDeviceInfo;
             TransportState = TransportState.No_Media_Present;
-            Name = playToDeviceInfo.Name;
-            Uuid = playToDeviceInfo.Uuid;
-            Services = playToDeviceInfo.Services;
-            foreach (var svc in Services)
+
+            foreach (var svc in Profile.Services)
             {
                 svc?.Normalise(playToDeviceInfo.BaseUrl);
             }
-
-            BaseUrl = playToDeviceInfo.BaseUrl;
         }
 
         /// <summary>
@@ -266,14 +265,9 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         public event EventHandler<MediaChangedEventArgs>? MediaChanged;
 
         /// <summary>
-        /// Gets the device's Uuid.
-        /// </summary>
-        public string Uuid { get; }
-
-        /// <summary>
         /// Gets the device's name.
         /// </summary>
-        public string Name { get; }
+        public string Name => Profile.Name ?? "Unidentified device.";
 
         /// <summary>
         /// Gets a value indicating whether the sound is muted.
@@ -284,11 +278,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// Gets the current media information.
         /// </summary>
         public UBaseObject? CurrentMediaInfo { get; private set; }
-
-        /// <summary>
-        /// Gets the baseUrl of the device.
-        /// </summary>
-        public string BaseUrl { get; }
 
         /// <summary>
         /// Gets or sets the Volume.
@@ -370,42 +359,37 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <summary>
         /// Gets the device's profile.
         /// </summary>
-        public DeviceProfile Profile => _profile!;
+        public PlayToDeviceProfile Profile { get; }
 
         /// <summary>
         /// Gets a value indicating the maximum wait time for http responses in ms.
         /// </summary>
-        private static int CtsTimeout => DlnaPlayTo.GetInstance().Configuration.CommunicationTimeout;
+        private static int CtsTimeout => _configuration.CommunicationTimeout;
 
         /// <summary>
         /// Gets a value indicating the friendly name used with devices.
         /// </summary>
-        private static string FriendlyName => DlnaPlayTo.GetInstance().Configuration.FriendlyName;
+        private static string FriendlyName => _configuration.FriendlyName;
 
         /// <summary>
         /// Gets a value indicating whether trace information should be redirected to the logs.
         /// </summary>
-        private static bool Tracing => DlnaPlayTo.GetInstance().Configuration.EnablePlayToDebug;
+        private static bool Tracing => _configuration.EnablePlayToDebug;
 
         /// <summary>
         /// Gets a value indicating the frequency of the device polling (ms).
         /// </summary>
-        private static int TimerInterval => DlnaPlayTo.GetInstance().Configuration.TimerInterval;
+        private static int DevicePollingInterval => _configuration.DevicePollingInterval;
 
         /// <summary>
         /// Gets a value indicating the user queue processing frequency (ms).
         /// </summary>
-        private static int QueueInterval => DlnaPlayTo.GetInstance().Configuration.QueueInterval;
+        private static int QueueProcessingInterval => _configuration.QueueProcessingInterval;
 
         /// <summary>
         /// Gets the Render Control service.
         /// </summary>
-        private DeviceService? RenderControl => Services[(int)ServiceType.RenderControl];
-
-        /// <summary>
-        /// Gets the services the device supports.
-        /// </summary>
-        private DeviceService?[] Services { get; }
+        private DeviceService? RenderControl => Profile.Services[(int)ServiceType.RenderControl];
 
         /// <summary>
         /// Gets a value indicating whether IsStopped.
@@ -415,7 +399,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <summary>
         /// Gets the AVTransport service.
         /// </summary>
-        private DeviceService? AvTransport => Services[(int)ServiceType.AvTransport];
+        private DeviceService? AvTransport => Profile.Services[(int)ServiceType.AvTransport];
 
         /// <summary>
         /// Gets or sets the TransportState.
@@ -429,7 +413,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="httpClientFactory">The <see cref="IHttpClientFactory"/> instance.</param>
         /// <param name="logger">The <see cref="ILogger"/> instance.</param>
         /// <returns>The <see cref="Task"/>.</returns>
-        public static async Task<PlayToDeviceInfo?> ParseDevice(DiscoveredSsdpDevice info, IHttpClientFactory httpClientFactory, ILogger logger)
+        public static async Task<PlayToDeviceProfile?> ParseDevice(DiscoveredSsdpDevice info, IHttpClientFactory httpClientFactory, ILogger logger)
         {
             XElement document;
             try
@@ -467,54 +451,30 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     .Replace("[]", string.Empty, StringComparison.OrdinalIgnoreCase)
                     .Trim();
 
-            var deviceProperties = new PlayToDeviceInfo(name, $"{parsedUrl.Scheme}://{parsedUrl.Host}:{parsedUrl.Port}", uuid.Value, info.Endpoint.Address)
+            var profile = new PlayToDeviceProfile(
+                name,
+                $"{parsedUrl.Scheme}://{parsedUrl.Host}:{parsedUrl.Port}",
+                uuid.Value,
+                info.Endpoint.Address.ToString())
             {
-                FriendlyName = friendlyName
+                Identification = new()
+                {
+                    ModelName = document.Descendants(_ud.GetName("modelName")).FirstOrDefault()?.Value,
+                    ModelNumber = document.Descendants(_ud.GetName("modelNumber")).FirstOrDefault()?.Value,
+                    Manufacturer = document.Descendants(_ud.GetName("manufacturer")).FirstOrDefault()?.Value,
+                    ManufacturerUrl = document.Descendants(_ud.GetName("manufacturerURL")).FirstOrDefault()?.Value,
+                    ModelUrl = document.Descendants(_ud.GetName("modelURL")).FirstOrDefault()?.Value,
+                    SerialNumber = document.Descendants(_ud.GetName("serialNumber")).FirstOrDefault()?.Value,
+                    ModelDescription = document.Descendants(_ud.GetName("modelDescription")).FirstOrDefault()?.Value
+                }
             };
 
-            var model = document.Descendants(_ud.GetName("modelName")).FirstOrDefault();
-            if (model != null)
+            string[] serviceTypeList =
             {
-                deviceProperties.ModelName = model.Value;
-            }
-
-            var modelNumber = document.Descendants(_ud.GetName("modelNumber")).FirstOrDefault();
-            if (modelNumber != null)
-            {
-                deviceProperties.ModelNumber = modelNumber.Value;
-            }
-
-            var manufacturer = document.Descendants(_ud.GetName("manufacturer")).FirstOrDefault();
-            if (manufacturer != null)
-            {
-                deviceProperties.Manufacturer = manufacturer.Value;
-            }
-
-            var manufacturerUrl = document.Descendants(_ud.GetName("manufacturerURL")).FirstOrDefault();
-            if (manufacturerUrl != null)
-            {
-                deviceProperties.ManufacturerUrl = manufacturerUrl.Value;
-            }
-
-            var modelUrl = document.Descendants(_ud.GetName("modelURL")).FirstOrDefault();
-            if (modelUrl != null)
-            {
-                deviceProperties.ModelUrl = modelUrl.Value;
-            }
-
-            var serialNumber = document.Descendants(_ud.GetName("serialNumber")).FirstOrDefault();
-            if (serialNumber != null)
-            {
-                deviceProperties.SerialNumber = serialNumber.Value;
-            }
-
-            var modelDescription = document.Descendants(_ud.GetName("modelDescription")).FirstOrDefault();
-            if (modelDescription != null)
-            {
-                deviceProperties.ModelDescription = modelDescription.Value;
-            }
-
-            string[] serviceTypeList = { "urn:schemas-upnp-org:service:ConnectionManager", "urn:schemas-upnp-org:service:RenderingControl", "urn:schemas-upnp-org:service:AVTransport" };
+                "urn:schemas-upnp-org:service:ConnectionManager",
+                "urn:schemas-upnp-org:service:RenderingControl",
+                "urn:schemas-upnp-org:service:AVTransport"
+            };
 
             foreach (var services in document.Descendants(_ud.GetName("serviceList")))
             {
@@ -531,37 +491,45 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     {
                         if (service.ServiceType.StartsWith(serviceTypeList[index], StringComparison.OrdinalIgnoreCase))
                         {
-                            deviceProperties.Services[index] = service;
+                            profile.Services[index] = service;
                         }
                     }
                 }
             }
 
-            return deviceProperties;
+            return profile;
         }
 
         /// <summary>
         /// Generates a PlayToDevice from the properties given."/>.
         /// </summary>
-        /// <param name="deviceProperties">The <see cref="PlayToDeviceInfo"/> instance.</param>
+        /// <param name="reportedDeviceProperties">The <see cref="PlayToDeviceProfile"/> instance.</param>
         /// <param name="httpClientFactory">The <see cref="IHttpClientFactory"/> instance.</param>
         /// <param name="logger">The <see cref="ILogger"/> instance.</param>
-        /// <param name="serverAddress">The server address to embed in the Didl.</param>
+        /// <param name="serverAddress">The server address to embed in the DIDL.</param>
         /// <param name="profileManager">The <see cref="IProfileManager"/>.</param>
+        /// <param name="clientAddress">The <see cref="IPAddress"/> of the client.</param>
         /// <returns>The <see cref="Task"/>.</returns>
         public static async Task<PlayToDevice> CreateDevice(
-            PlayToDeviceInfo deviceProperties,
+            PlayToDeviceProfile reportedDeviceProperties,
             IHttpClientFactory httpClientFactory,
             ILogger logger,
             string serverAddress,
-            IProfileManager profileManager)
+            IProfileManager profileManager,
+            IPAddress clientAddress)
         {
-            var device = new PlayToDevice(deviceProperties, httpClientFactory, logger, serverAddress);
+            // Get the profile for the device.
+            var profile = profileManager.GetOrCreateProfile(reportedDeviceProperties.Identification!, clientAddress);
 
-            // Get device capabilities.
-            var protocolInfo = await device.GetProtocolInfo().ConfigureAwait(false);
+            // Update the device description with the information reported by the device
+            reportedDeviceProperties.CopyFrom(profile);
 
-            device._profile = profileManager.GetProfile(deviceProperties, protocolInfo, true);
+            // deviceProperties contains information that the device provided.
+            var device = new PlayToDevice(reportedDeviceProperties, httpClientFactory, logger, serverAddress);
+
+            // Update the profile based upon the in-depth capabilities the device reported.
+            ProcessProtocol(profileManager, reportedDeviceProperties, await device.GetProtocolInfo().ConfigureAwait(false));
+
             return device;
         }
 
@@ -571,7 +539,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <returns>Task.</returns>
         public async Task DeviceInitialise()
         {
-            if (_timer == null)
+            if (_deviceCommunicationsTimer == null)
             {
                 // Reset the caching timings.
                 _lastPositionRequest = DateTime.UtcNow.AddSeconds(-5);
@@ -631,7 +599,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     _logger.LogDebug("{Name}: Starting timer.", Name);
                 }
 
-                _timer = new Timer(TimerCallback, null, 500, Timeout.Infinite);
+                _deviceCommunicationsTimer = new Timer(TimerCallback, null, 500, Timeout.Infinite);
 
                 // Start the user command queue processor.
                 await ProcessQueue().ConfigureAwait(false);
@@ -644,35 +612,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <returns>Task.</returns>
         public async Task DeviceUnavailable()
         {
-            if (_subscribed)
-            {
-                if (Tracing)
-                {
-                    _logger.LogDebug("{Name}: Killing the timer.", Name);
-                }
-
-                // Attempt to unsubscribe - may not be possible.
-                await UnSubscribeAsync().ConfigureAwait(false);
-
-                lock (_timerLock)
-                {
-                    _timer?.Dispose();
-                    _timer = null;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Refreshes the playTo device info.
-        /// </summary>
-        /// <param name="deviceProperties">The <see cref="PlayToDeviceInfo"/>.</param>
-        /// <param name="profileManager">The <see cref="IProfileManager"/>.</param>
-        /// <returns>Task.</returns>
-        public async Task RefreshDevice(PlayToDeviceInfo deviceProperties, IProfileManager profileManager)
-        {
-            // Get device capabilities.
-            var protocolInfo = await GetProtocolInfo().ConfigureAwait(false);
-            _profile = profileManager.GetProfile(deviceProperties, protocolInfo, true);
+            // Attempt to unsubscribe - may not be possible.
+            await UnSubscribeAsync().ConfigureAwait(false);
         }
 
         /// <summary>
@@ -802,6 +743,59 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         {
             Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Processes the DLNA protocolInfo field.
+        /// </summary>
+        /// <param name="protocolInfo">The device's reported protocolInfo.</param>
+        private static void ProcessProtocol(IProfileManager profileManager, DeviceProfile profile, string protocolInfo)
+        {
+            if (string.Equals(profile.ProtocolInfo, protocolInfo, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            profile.ProtocolInfo = protocolInfo;
+
+            if (string.IsNullOrEmpty(protocolInfo))
+            {
+                return;
+            }
+
+            var responses = profile.ResponseProfiles == null ? new List<ResponseProfile>() : new List<ResponseProfile>(profile.ResponseProfiles);
+            var protocols = protocolInfo.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var protocol in protocols)
+            {
+                var segments = protocol.Split(':');
+                if ((segments.Length != 4)
+                   || !string.Equals(segments[0], "http-get", StringComparison.OrdinalIgnoreCase)
+                   || !string.Equals(segments[1], "*", StringComparison.Ordinal))
+                {
+                    // _logger.LogDebug("Invalid Protocol: {Protocol}", protocol);
+                    continue;
+                }
+
+                var parts = segments[2].Split('/');
+                if (parts.Length != 2 || !Enum.TryParse<DlnaProfileType>(parts[0], true, out var profileType))
+                {
+                    continue;
+                }
+
+                var rp = new ResponseProfile
+                {
+                    Container = parts[1],
+                    OrgPn = segments[3],
+                    Type = profileType,
+                    MimeType = segments[2]
+                    // TODO: add other fields to complete the response profile.
+                };
+
+                responses.Add(rp);
+            }
+
+            profile.ResponseProfiles = responses.ToArray();
+            profileManager.SaveProfileToDisk(profile);
         }
 
         /// <summary>
@@ -959,7 +953,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 return service;
             }
 
-            var commands = await GetProtocolAsync(Services[(int)serviceType]).ConfigureAwait(false);
+            var commands = await GetProtocolAsync(Profile.Services[(int)serviceType]).ConfigureAwait(false);
             if (commands == null)
             {
                 _logger.LogWarning("{Name}: GetProtocolAsync for {serviceType} returned null.", Name, serviceType);
@@ -990,7 +984,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <summary>
         /// Restart the polling timer.
         /// </summary>
-        /// <param name="when">When to restart the timer. Less than 0 = never, 0 = instantly, greater than 0 in 1 second.</param>
+        /// <param name="when">When to restart the timer. Less than 0 = never, 1 = instantly, otherwise restart after <see cref="TimerInterval"/>.</param>
         private void RestartTimer(int when)
         {
             lock (_timerLock)
@@ -1004,9 +998,9 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                 {
                     Never => Timeout.Infinite,
                     Now => 100,
-                    _ => TimerInterval
+                    _ => DevicePollingInterval
                 };
-                _timer?.Change(delay, Timeout.Infinite);
+                _deviceCommunicationsTimer?.Change(delay, Timeout.Infinite);
             }
         }
 
@@ -1214,7 +1208,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
                     }
                 }
 
-                await Task.Delay(QueueInterval).ConfigureAwait(false);
+                await Task.Delay(QueueProcessingInterval).ConfigureAwait(false);
             }
         }
 
@@ -1412,7 +1406,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
             string? postData;
 
-            var service = Services[(int)serviceType];
+            var service = Profile.Services[(int)serviceType];
             var commands = await GetServiceCommands(serviceType).ConfigureAwait(false);
             var command = commands?.ServiceActions.FirstOrDefault(c => c.Name == actionCommand);
             if (service == null)
@@ -2436,7 +2430,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
 
             if (disposing)
             {
-                _timer?.Dispose();
+                _deviceCommunicationsTimer?.Dispose();
+                _deviceCommunicationsTimer = null;
                 DlnaPlayTo.GetInstance().DlnaEvents -= ProcessSubscriptionEvent;
             }
 

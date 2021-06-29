@@ -14,10 +14,10 @@ using Jellyfin.Plugin.Dlna.Model;
 using Jellyfin.Plugin.Dlna.PlayTo.Configuration;
 using Jellyfin.Plugin.Dlna.PlayTo.Main;
 using Jellyfin.Plugin.Dlna.Ssdp;
+using Jellyfin.Profiles;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Common.Plugins;
-using MediaBrowser.Common.Profiles;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Drawing;
@@ -121,6 +121,9 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             _notificationManager = notificationManager;
             _networkManager = networkManager;
             _configurationManager = configurationManager;
+
+            ProfileHelper.ExtractSystemTemplates(_logger, _profileManager, xmlSerializer).GetAwaiter().GetResult();
+
             _logger.LogDebug("DLNA PlayTo: Starting Device Discovery.");
             _locator = new SsdpLocator(
                 _configurationManager,
@@ -168,6 +171,15 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
         private static DlnaPlayTo? Instance { get; set; }
 
         /// <summary>
+        /// Gets the static instance.
+        /// </summary>
+        /// <returns>The <see cref="DlnaPlayTo"/> instance.</returns>
+        public static DlnaPlayTo GetInstance()
+        {
+            return Instance ?? throw new NullReferenceException("Dlna PlayTo plugin not initialized.");
+        }
+
+        /// <summary>
         /// The GetPages.
         /// </summary>
         /// <returns>The <see cref="IEnumerable{PluginPageInfo}"/>.</returns>
@@ -182,15 +194,6 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                     EmbeddedResourcePath = $"{GetType().Namespace}.Configuration.configPage.html"
                 }
             };
-        }
-
-        /// <summary>
-        /// Gets the static instance.
-        /// </summary>
-        /// <returns>The <see cref="DlnaPlayTo"/> instance.</returns>
-        public static DlnaPlayTo GetInstance()
-        {
-            return Instance ?? throw new NullReferenceException("Dlna PlayTo plugin not initialized.");
         }
 
         /// <summary>
@@ -361,7 +364,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                 // Check that the details of the device haven't changed.
                 var parsedUrl = new Uri(args.Location);
                 var baseUrl = $"{parsedUrl.Scheme}://{parsedUrl.Host}:{parsedUrl.Port}";
-                if (string.Equals(baseUrl, device.BaseUrl, StringComparison.Ordinal))
+                if (string.Equals(baseUrl, device.Profile.BaseUrl, StringComparison.Ordinal))
                 {
                     return;
                 }
@@ -373,7 +376,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                     return;
                 }
 
-                await device.RefreshDevice(deviceProperties, _profileManager).ConfigureAwait(false);
+                device.Profile.Name = deviceProperties.Name;
             }
             catch (OperationCanceledException)
             {
@@ -415,7 +418,13 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
 
             string serverAddress = _appHost.GetSmartApiUrl(info.Endpoint.Address);
 
-            var device = await PlayToDevice.CreateDevice(deviceProperties, _httpClientFactory, _logger, serverAddress, _profileManager).ConfigureAwait(false);
+            var device = await PlayToDevice.CreateDevice(
+                deviceProperties,
+                _httpClientFactory,
+                _logger,
+                serverAddress,
+                _profileManager,
+                info.Endpoint.Address).ConfigureAwait(false);
             _devices.Add(device);
 
 #pragma warning disable CA2000 // Dispose objects before losing scope
@@ -442,7 +451,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
 
             _sessionManager.ReportCapabilities(sessionInfo.Id, new ClientCapabilities
             {
-                PlayableMediaTypes = device.Profile.GetSupportedMediaTypes(),
+                PlayableMediaTypes = device.Profile.SupportedMediaTypes.Split(',', StringSplitOptions.RemoveEmptyEntries),
 
                 SupportedCommands = new[]
                 {
@@ -460,7 +469,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
                 SupportsMediaControl = true
             });
 
-            _logger.LogInformation("DLNA Session created for {Name} - {Model}", device.Name, deviceProperties.ModelName);
+            _logger.LogInformation("DLNA Session created for {Name} - {Model}", device.Name, deviceProperties.Identification?.ModelName);
             _locator.SlowDown();
         }
 
@@ -472,8 +481,8 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             config.ClientDiscoveryInitialInterval = Math.Clamp(config.ClientDiscoveryInitialInterval, 4, 1500);
             config.ClientDiscoveryInterval = Math.Clamp(config.ClientDiscoveryInterval, 10, 60000);
             config.CommunicationTimeout = Math.Clamp(config.CommunicationTimeout, 8000, 60000);
-            config.TimerInterval = Math.Clamp(config.TimerInterval, 0, 1200000);
-            config.QueueInterval = Math.Clamp(config.QueueInterval, 0, 60000);
+            config.DevicePollingInterval = Math.Clamp(config.DevicePollingInterval, 0, 1200000);
+            config.QueueProcessingInterval = Math.Clamp(config.QueueProcessingInterval, 0, 60000);
 
             _locator.Interval = config.ClientDiscoveryInterval;
             _locator.InitialInterval = config.UseNetworkDiscovery ? config.ClientDiscoveryInitialInterval : -1;
