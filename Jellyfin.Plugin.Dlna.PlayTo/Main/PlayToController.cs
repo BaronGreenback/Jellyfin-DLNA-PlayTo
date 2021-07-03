@@ -6,13 +6,13 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Data.Entities;
+using Jellyfin.DeviceProfiles;
 using Jellyfin.Plugin.Dlna.Culture;
 using Jellyfin.Plugin.Dlna.Didl;
 using Jellyfin.Plugin.Dlna.Model;
 using Jellyfin.Plugin.Dlna.PlayTo.EventArgs;
 using Jellyfin.Plugin.Dlna.PlayTo.Model;
 using Jellyfin.Plugin.Dlna.Ssdp;
-using Jellyfin.Profiles;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Drawing;
 using MediaBrowser.Controller.Entities;
@@ -50,7 +50,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         private readonly string _serverAddress;
         private readonly string? _accessToken;
         private readonly List<PlaylistItem> _playlist = new();
-        private readonly IProfileManager _profileManager;
+        private readonly IDeviceProfileManager _profileManager;
         private readonly Timer _photoTransitionTimer;
         private int _currentPlaylistIndex = -1;
         private PlaystateCommand? _photoSlideshow;
@@ -74,7 +74,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// <param name="config">The <see cref="IServerConfigurationManager"/>.</param>
         /// <param name="mediaEncoder">The mediaEncoder<see cref="IMediaEncoder"/>.</param>
         /// <param name="device">The <see cref="PlayToDevice"/>.</param>
-        /// <param name="profileManager">The <see cref="IProfileManager"/>.</param>
+        /// <param name="profileManager">The <see cref="IDeviceProfileManager"/>.</param>
         public PlayToController(
             SessionInfo session,
             ISessionManager sessionManager,
@@ -91,7 +91,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             IServerConfigurationManager config,
             IMediaEncoder mediaEncoder,
             PlayToDevice device,
-            IProfileManager profileManager)
+            IDeviceProfileManager profileManager)
         {
             _session = session;
             _sessionManager = sessionManager;

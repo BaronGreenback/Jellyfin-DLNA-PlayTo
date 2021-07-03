@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using System.Web;
 using System.Xml;
 using System.Xml.Linq;
+using Jellyfin.DeviceProfiles;
 using Jellyfin.Plugin.Dlna.Culture;
 using Jellyfin.Plugin.Dlna.Didl;
 using Jellyfin.Plugin.Dlna.EventArgs;
@@ -23,7 +24,6 @@ using Jellyfin.Plugin.Dlna.PlayTo.Configuration;
 using Jellyfin.Plugin.Dlna.PlayTo.EventArgs;
 using Jellyfin.Plugin.Dlna.PlayTo.Model;
 using Jellyfin.Plugin.Dlna.Ssdp;
-using Jellyfin.Profiles;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Notifications;
@@ -515,7 +515,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
             IHttpClientFactory httpClientFactory,
             ILogger logger,
             string serverAddress,
-            IProfileManager profileManager,
+            IDeviceProfileManager profileManager,
             IPAddress clientAddress)
         {
             // Get the profile for the device.
@@ -749,7 +749,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo.Main
         /// Processes the DLNA protocolInfo field.
         /// </summary>
         /// <param name="protocolInfo">The device's reported protocolInfo.</param>
-        private static void ProcessProtocol(IProfileManager profileManager, DeviceProfile profile, string protocolInfo)
+        private static void ProcessProtocol(IDeviceProfileManager profileManager, DeviceProfile profile, string protocolInfo)
         {
             if (string.Equals(profile.ProtocolInfo, protocolInfo, StringComparison.Ordinal))
             {

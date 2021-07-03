@@ -44,6 +44,7 @@
     <ProjectReference Include="..\..\Jellyfin.Plugin.Dlna\Jellyfin.Plugin.Dlna\Jellyfin.Plugin.Dlna.csproj" />
     <ProjectReference Include="..\..\jellyfin\Jellyfin.Api\Jellyfin.Api.csproj" />
 		<ProjectReference Include="..\..\jellyfin\Jellyfin.Data\Jellyfin.Data.csproj" />
+		<ProjectReference Include="..\..\Jellyfin\Jellyfin.DeviceProfiles\Jellyfin.DeviceProfiles.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

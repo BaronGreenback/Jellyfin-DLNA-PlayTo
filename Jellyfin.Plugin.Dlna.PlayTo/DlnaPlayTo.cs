@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Api.Helpers;
+using Jellyfin.DeviceProfiles;
 using Jellyfin.Networking.Configuration;
 using Jellyfin.Plugin.Dlna.Configuration;
 using Jellyfin.Plugin.Dlna.EventArgs;
@@ -14,7 +15,6 @@ using Jellyfin.Plugin.Dlna.Model;
 using Jellyfin.Plugin.Dlna.PlayTo.Configuration;
 using Jellyfin.Plugin.Dlna.PlayTo.Main;
 using Jellyfin.Plugin.Dlna.Ssdp;
-using Jellyfin.Profiles;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Common.Plugins;
@@ -57,7 +57,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
         private readonly CancellationTokenSource _disposeCancellationTokenSource = new();
         private readonly List<PlayToDevice> _devices = new();
         private readonly SsdpLocator _locator;
-        private readonly IProfileManager _profileManager;
+        private readonly IDeviceProfileManager _profileManager;
         private bool _disposed;
 
         /// <summary>
@@ -98,7 +98,7 @@ namespace Jellyfin.Plugin.Dlna.PlayTo
             IMediaEncoder mediaEncoder,
             INotificationManager notificationManager,
             INetworkManager networkManager,
-            IProfileManager profileManager)
+            IDeviceProfileManager profileManager)
             : base(applicationPaths, xmlSerializer)
         {
             SsdpConfiguration.JellyfinVersion = appHost.ApplicationVersionString;
